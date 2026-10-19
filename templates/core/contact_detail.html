@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% comment %}
+  contact_detail.html: one contact. Timeline, history, details, deals.
+
+  TEACHING NOTE: this is where the timeline lives. An Activity(kind=email)
+  logged by hand is drawn by partials/activity_item.html alongside notes, calls
+  and meetings. Edit, Merge and Delete each check the role here for tidiness, and
+  each view checks again for real.
+{% endcomment %}
+{% load crm humanize %}
+{% block title %}{{ object.full_name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ object.full_name }}</h1>
+    <div class="sub">{% if object.title %}{{ object.title }}{% endif %}{% if object.company %}{% if object.title %} at {% endif %}<a href="{{ object.company.get_absolute_url }}">{{ object.company }}</a>{% endif %}</div></div>
+  <div class="actions">
+    {% if can_edit %}<a class="btn btn-secondary" href="{% url 'contact_update' object.pk %}">Edit</a>{% endif %}
+    {% if user_role == "Admin" %}<a class="btn btn-secondary" href="{% url 'contact_merge' object.pk %}">Merge duplicates</a>{% endif %}
+    {% if can_delete %}<a class="btn btn-danger" href="{% url 'contact_delete' object.pk %}">Delete</a>{% endif %}
+  </div>
+</div>
+<div class="detail-grid">
+  <div>
+    <section class="panel">
+      {% include "core/partials/tabs.html" %}
+      {% include "core/partials/timeline_panel.html" %}
+      {% include "core/partials/history_panel.html" %}
+    </section>
+  </div>
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Details</h2></div>
+      <div class="panel-body"><dl class="facts">
+        <dt>Email</dt><dd>{% if object.email %}<a href="mailto:{{ object.email }}">{{ object.email }}</a>{% else %}—{% endif %}</dd>
+        <dt>Phone</dt><dd>{{ object.phone|default:"—" }}</dd>
+        <dt>Lifecycle</dt><dd><span class="pill">{{ object.get_lifecycle_display }}</span></dd>
+        <dt>Owner</dt><dd>{{ object.owner|default:"—" }}</dd>
+        <dt>Source</dt><dd>{{ object.source|default:"—" }}</dd>
+        <dt>Tags</dt><dd>{% for t in object.tags.all %}<span class="pill tag">{{ t }}</span> {% empty %}—{% endfor %}</dd>
+        {% comment %}Buying roles, in the order the sale walks them (BuyingRole.Meta.ordering). "—" when
+           the contact holds none, matching the Tags row above.{% endcomment %}
+        <dt>Buying role</dt><dd>{% for r in object.roles.all %}<span class="pill role-pill role-{{ r.slug }}">{{ r }}</span> {% empty %}—{% endfor %}</dd>
+        {% if object.notes %}<dt>Notes</dt><dd class="prewrap">{{ object.notes }}</dd>{% endif %}
+      </dl></div>
+    </section>
+    {% include "core/partials/tasks_panel.html" %}
+    <section class="panel">
+      <div class="panel-head"><h2>Deals</h2></div>
+      <ul class="timeline">
+        {% for d in deals %}<li><a href="{{ d.get_absolute_url }}">{{ d.name }}</a>
+          <div class="meta"><span class="pill stage-{{ d.stage }}">{{ d.get_stage_display }}</span> ${{ d.value|floatformat:0|intcomma }}</div></li>
+        {% empty %}<li class="empty">No deals.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

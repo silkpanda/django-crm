@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% comment %}
+  confirm_delete.html: "Delete this record?", shared by every model.
+
+  TEACHING NOTE: deleting takes a POST from this page, never a plain link. A
+  GET can be fired by an image tag on another site, a browser prefetch, or a
+  link-preview bot, so delete-by-link could happen without anyone clicking.
+  "The change history keeps a copy" is literally true: django-simple-history
+  writes a final "deleted" row. A company that still has deals is refused
+  with a message instead (its deals' FK, ForeignKey, is PROTECT).
+{% endcomment %}
+{% block title %}Delete {{ object }}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Delete {{ object }}?</h1></div>
+<div class="panel"><div class="panel-body">
+  <p>This removes the record and its timeline. The change history keeps a copy.</p>
+  <form method="post">{% csrf_token %}
+    <div class="actions">
+      <button class="btn btn-danger" type="submit">Delete</button>
+      <a class="btn btn-secondary" href="{{ object.get_absolute_url }}">Cancel</a>
+    </div>
+  </form>
+</div></div>
+{% endblock %}

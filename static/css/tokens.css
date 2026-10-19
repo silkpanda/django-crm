@@ -1,0 +1,43 @@
+/* Brand tokens. These are the DEFAULTS; every value is overridable from .env with
+   the matching BRAND_* variable (see README "Branding"), which base.html emits as
+   a `:root` override after this file loads. Nothing downstream hardcodes a
+   colour — app.css only ever reads these names. Shape and spacing tokens below
+   the brand block are not brand-specific and have no env override. */
+:root {
+  --brand-red: #dc2626;           /* 4.83:1 on white, so it clears AA even as
+                                     text; as a fill it carries white text */
+  --brand-red-text: #b91c1c;      /* darker red for text/icons on white (6.47:1) */
+  --brand-blue: #0d9488;          /* fills and borders only — white on it is
+                                     3.74:1, under AA for body text */
+  --brand-blue-hover: #0f766e;
+  --brand-blue-text: #0f766e;     /* 5.47:1 on white — this is the link colour */
+  --brand-navy: #1e293b;          /* 14.63:1 on white */
+  --brand-navy-2: #334155;        /* 10.35:1 on white */
+
+  --ink: #141617;
+  --ink-2: #212326;
+  --ink-3: #434549;
+  --body: #405363;
+  --muted: #5f6f7c;
+
+  --surface: #ffffff;
+  --surface-2: #f9f9fb;
+  --surface-3: #f2f3f5;
+  --line: #aeaeaf;
+  --line-soft: #dcdee2;
+
+  --ok: #1e7d3a;
+  --warn: #9a6200;
+
+  --font-display: "Roboto Slab", Georgia, serif;
+  --font-body: "Roboto", Arial, Helvetica, sans-serif;
+  --font-label: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+
+  --radius: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+}

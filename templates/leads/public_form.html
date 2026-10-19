@@ -1,0 +1,45 @@
+{% extends "registration/auth_base.html" %}
+{% comment %}
+  public_form.html: the lead form on the company website. No login, ever.
+
+  SECURITY NOTE — this page is rendered to strangers, and everything about it is
+  chosen for that:
+
+    - It extends registration/auth_base.html, which OVERRIDES base.html's whole
+      `body` block. So there is no sidebar, no nav, no search box, no username,
+      no role chip and no sign-out link anywhere in this HTML. A visitor learns
+      nothing about the staff side, and nothing about there being one. The
+      Phase 5 probe (5.7) checks for exactly that: no user names, no /companies/
+      or /deals/ links in the response.
+
+    - The `website` field is rendered like any other field, because the honeypot
+      works by being INVISIBLE rather than absent. The `.hp` class in app.css
+      parks it far off-screen; a bot that inspects the markup still finds an
+      input and fills it in, and we know.
+
+    - `{% csrf_token %}` is here even though nobody is logged in. The form is
+      still a form posted by a browser, and the token is what stops a third-party
+      site from making somebody's browser submit a lead into ours. It costs one
+      hidden input and needs no session.
+
+    - Errors are rendered normally. A person who left the message blank is told
+      so; the honeypot's own failure mode never reaches a human, because a human
+      cannot see the field.
+
+  `novalidate` matches every other form in the app: the server's errors are the
+  ones you get, so they look the same everywhere.
+{% endcomment %}
+{% block title %}Request a quote{% endblock %}
+{% block auth %}
+<h1>Request a quote</h1>
+<p class="muted">Tell us what you need and somebody will call you back.</p>
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  {% for field in form %}
+    {% include "core/partials/field.html" with wide=True %}
+  {% endfor %}
+  <div class="actions">
+    <button class="btn" type="submit">Send</button>
+  </div>
+</form>
+{% endblock %}

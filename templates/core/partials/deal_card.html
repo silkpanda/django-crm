@@ -1,0 +1,28 @@
+{% comment %}
+  deal_card.html: one deal on the pipeline board.
+
+  TEACHING NOTE: cards are only `draggable` for people who can edit the deal,
+  and only those cards carry the hidden stage-move form. When a card is dropped
+  in a new column, app.js fills in `stage` (plus `lost_reason` for Lost) and
+  posts the form through HTMX. On success the server sends back a fresh card.
+
+  SECURITY NOTE: leaving the form off other people's cards is politeness, not
+  protection. Anyone can POST to deal_stage_move by hand, so the view checks
+  ownership again and returns 403. Security probe 2.1 does exactly that.
+{% endcomment %}
+{% load humanize %}
+<div class="deal-card" data-deal-id="{{ deal.pk }}" {% if can_edit %}draggable="true"{% endif %}>
+  <div class="deal-card-name"><a href="{{ deal.get_absolute_url }}">{{ deal.name }}</a></div>
+  <div class="deal-card-company">{{ deal.company }}</div>
+  <div class="deal-card-meta">
+    <span class="deal-card-value">${{ deal.value|floatformat:0|intcomma }}</span>
+    {% if deal.owner %}<span class="deal-card-owner">{{ deal.owner.username }}</span>{% endif %}
+  </div>
+  {% if can_edit %}
+  <form method="post" action="{% url 'deal_stage_move' deal.pk %}" class="deal-move-form" hidden>
+    {% csrf_token %}
+    <input type="hidden" name="stage" value="">
+    <input type="hidden" name="lost_reason" value="">
+  </form>
+  {% endif %}
+</div>

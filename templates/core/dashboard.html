@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+{% comment %}
+  dashboard.html: the home page. Headline counts, pipeline by stage, win rate,
+  deals closing this month, your deals, recent activity, and overdue tasks.
+
+  TEACHING NOTE: the counts and money totals are database aggregates (the
+  database runs COUNT and SUM, so Python never loads every deal to add them).
+  This template only formats them. Win rate is Won / (Won + Lost) for deals
+  closed in the last 90 days. "Closing this month" and "overdue" use the local
+  calendar (core/dates.py, REVIEW-25).
+
+  Known gap: the plan asked for "activities per rep this week". The view
+  computes a single total (`activities_this_week`, not split by rep) and this
+  template never shows it.
+
+  The "Team"/"Your deals" line under the pipeline figure says which set of deals
+  the numbers are — the count and the money are both scoped now, so a Rep's
+  "$3,000" and an Admin's "$15,000" are the same measurement of two different
+  populations. Label the measurement, not just the result (QA-04).
+{% endcomment %}
+{% load humanize %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Dashboard</h1><div class="sub">Welcome back, {{ user.first_name|default:user.username }}.</div></div><div class="actions">{% include "core/partials/scope_switch.html" %}</div></div>
+<div class="stats">
+  <div class="stat"><div class="label">Companies</div><div class="value">{{ counts.companies|intcomma }}</div></div>
+  <div class="stat"><div class="label">Contacts</div><div class="value">{{ counts.contacts|intcomma }}</div></div>
+  <div class="stat"><div class="label">Open deals</div><div class="value">{{ counts.open_deals|intcomma }}</div></div>
+  <div class="stat"><div class="label">Open pipeline</div><div class="value">${{ counts.pipeline_value|floatformat:0|intcomma }}</div><div class="stat-scope">{% if scope == 'mine' %}Your deals{% else %}Team{% endif %}</div></div>
+</div>
+
+<div class="cols-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Pipeline by stage</h2><a href="{% url 'pipeline' %}">Board</a></div>
+    <div class="panel-body">
+      {% for stage_value, info in pipeline_by_stage.items %}
+      <div class="pipeline-row">
+        <span class="pill stage-{{ stage_value }}">{{ info.label }}</span>
+        <span class="pipeline-count">{{ info.count }} deal{{ info.count|pluralize }}</span>
+        <span class="pipeline-value">${{ info.value|floatformat:0|intcomma }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>Win rate (90 days)</h2></div>
+    <div class="panel-body">
+      <div class="win-rate">{{ win_rate }}%</div>
+      <div class="sub">{{ won_count }} won / {{ closed_count }} closed</div>
+    </div>
+  </section>
+</div>
+
+<div class="cols-2">
+  <section class="panel">
+    <div class="panel-head"><h2>Closing this month</h2></div>
+    <div class="panel-body flush table-wrap">
+      <table class="data"><tbody>
+      {% for d in closing_this_month %}
+        <tr><td><a href="{{ d.get_absolute_url }}">{{ d.name }}</a><div style="font-size:13px;color:var(--muted)">{{ d.company }}</div></td>
+            <td class="num">${{ d.value|floatformat:0|intcomma }}</td>
+            <td>{{ d.expected_close|date:"M j" }}</td></tr>
+      {% empty %}<tr><td class="empty">No deals closing this month.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head"><h2>My overdue tasks</h2><a href="{% url 'task_list' %}">All</a></div>
+    <ul class="timeline">
+      {% for t in my_overdue_tasks %}
+      <li><div class="meta"><span>{{ t.title }}</span><span>{{ t.due_at|naturaltime }}</span></div></li>
+      {% empty %}<li class="empty">No overdue tasks. You're on top of it.</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+
+<div class="cols-2">
+  <section class="panel">
+    <div class="panel-head"><h2>My open deals</h2><a href="{% url 'deal_list' %}?owner={{ user.pk }}">All</a></div>
+    <div class="panel-body flush table-wrap">
+      <table class="data"><tbody>
+      {% for d in my_deals %}
+        <tr><td><a href="{{ d.get_absolute_url }}">{{ d.name }}</a><div style="font-size:13px;color:var(--muted)">{{ d.company }}</div></td>
+            <td><span class="pill stage-{{ d.stage }}">{{ d.get_stage_display }}</span></td>
+            <td class="num">${{ d.value|floatformat:0|intcomma }}</td></tr>
+      {% empty %}<tr><td class="empty">No open deals assigned to you.</td></tr>{% endfor %}
+      </tbody></table>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Recent activity</h2></div>
+    <ul class="timeline">
+      {% for a in recent_activity %}
+      <li><div class="meta"><span class="kind kind-{{ a.kind }}">{{ a.get_kind_display }}</span>
+        <span>{{ a.occurred_at|naturaltime }}</span>
+        <span>· {% if a.deal %}<a href="{{ a.deal.get_absolute_url }}">{{ a.deal }}</a>{% elif a.contact %}<a href="{{ a.contact.get_absolute_url }}">{{ a.contact }}</a>{% elif a.company %}<a href="{{ a.company.get_absolute_url }}">{{ a.company }}</a>{% endif %}</span></div>
+        <div class="prewrap">{{ a.body|truncatechars:160 }}</div></li>
+      {% empty %}<li class="empty">Nothing logged yet.</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+{% endblock %}

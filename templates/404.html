@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% comment %}
+  404.html: "no such record."
+
+  TEACHING NOTE: shown when a URL points at a record that doesn't exist (the
+  views raise Http404, often through `get_object_or_404`), and again only with
+  DEBUG off. "Never existed" and "was deleted" get the same wording.
+{% endcomment %}
+{% block title %}Not found{% endblock %}
+{% block content %}<div class="page-head"><h1>Not found</h1></div><div class="panel"><div class="panel-body"><p>That record doesn't exist or was deleted.</p><p><a href="{% url 'dashboard' %}">Back to the dashboard</a></p></div></div>{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% comment %}
+  403.html: "you're signed in, but your role can't do that."
+
+  TEACHING NOTE: Django shows this page by itself whenever a view raises
+  `PermissionDenied`, but only with DEBUG off. With DEBUG on you get Django's
+  yellow debug page instead. It says "not allowed" and nothing about the record
+  itself, so a refused request can't be used to read what it was refused.
+{% endcomment %}
+{% block title %}Not allowed{% endblock %}
+{% block content %}<div class="page-head"><h1>Not allowed</h1></div><div class="panel"><div class="panel-body"><p>Your role can't do that. Ask an Admin if you need access.</p><p><a href="{% url 'dashboard' %}">Back to the dashboard</a></p></div></div>{% endblock %}

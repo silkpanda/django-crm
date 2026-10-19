@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% comment %}
+  auth_base.html: the bare card layout for sign-in and password-reset pages.
+
+  TEACHING NOTE: it overrides base.html's whole `body` block, not just
+  `content`, so these pages get no sidebar and no top bar. That's more than
+  looks: the sidebar shows an overdue-task badge and the top bar shows a name
+  and role, and none of that means anything before someone has signed in.
+{% endcomment %}
+{% block body %}
+<div class="auth-wrap">
+  <div class="auth-card">
+    <div class="brand">{{ brand_wordmark }} <span>{{ brand_wordmark_accent }}</span></div>
+    {% block auth %}{% endblock %}
+  </div>
+</div>
+{% endblock %}

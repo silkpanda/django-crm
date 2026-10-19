@@ -1,0 +1,7 @@
+Django>=5.2,<5.3
+django-simple-history>=3.10
+django-axes>=8.0
+django-filter>=25.0
+SQLAlchemy>=2.0
+requests>=2.32
+python-dotenv>=1.0

@@ -1,0 +1,24 @@
+{% extends "registration/auth_base.html" %}
+{% comment %}
+  thanks.html: where both a real submission and a trapped bot end up.
+
+  TEACHING NOTE — the whole reason this page exists in its own right is that it
+  must NOT say anything else. A bot that fills the honeypot is redirected HERE,
+  to the same page, with the same words, as a customer who filled in the form
+  properly. A separate "spam detected" page would be a free oracle: it would tell
+  every scraper on the internet exactly which of its submissions had been
+  noticed, and which trick had given it away.
+
+  So there is nothing conditional in this template. There is no "your reference
+  number", no "a member of the team will be in touch", and no personalisation —
+  not because those would be rude, but because they would be the difference
+  between the bot's view and the human's.
+
+  No email is sent either (README): the message is sitting in the Leads queue
+  with nobody assigned to it, which is the next page in the story.
+{% endcomment %}
+{% block title %}Thanks{% endblock %}
+{% block auth %}
+<h1>Thanks — got it.</h1>
+<p>Your message is with us and somebody will call you back.</p>
+{% endblock %}

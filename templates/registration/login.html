@@ -1,0 +1,26 @@
+{% extends "registration/auth_base.html" %}
+{% comment %}
+  login.html: the sign-in form. Django's built-in LoginView renders it.
+
+  TEACHING NOTE: `csrf_token` puts a hidden, per-session secret in the form.
+  CSRF (Cross-Site Request Forgery) is another website getting your browser to
+  submit a form here. That site can't read the secret, so its forged POST is
+  rejected.
+
+  The hidden `next` field is where you were headed before being sent here.
+  LoginView only follows it if it points back at this same site, so a `next` of
+  https://evil.example is ignored. That stops this login page being used as a
+  trusted-looking hop to a phishing site.
+{% endcomment %}
+{% block title %}Sign in{% endblock %}
+{% block auth %}
+<h1>Sign in</h1>
+{% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+<form method="post">{% csrf_token %}
+  {% include "core/partials/field.html" with field=form.username %}
+  {% include "core/partials/field.html" with field=form.password %}
+  <input type="hidden" name="next" value="{{ next }}">
+  <button class="btn" type="submit">Sign in</button>
+</form>
+<p style="margin-top:16px;font-size:14px"><a href="{% url 'password_reset' %}">Forgot your password?</a></p>
+{% endblock %}

@@ -1,0 +1,20 @@
+{% comment %}
+  kanban_col_head.html: the header of one pipeline column — the stage pill and
+  the `$total · count` line.
+
+  TEACHING NOTE: this is a partial instead of markup inlined in pipeline.html
+  for exactly one reason: the board has to be able to REPLACE it without
+  reloading. deal_stage_move renders this same template a second time with
+  `oob=True`, which adds hx-swap-oob and tells HTMX "swap this into the element
+  with this id" rather than "put this where the card was". One template, two
+  uses, so a column header's number can never come from two different
+  calculations that quietly disagree (PIPE-2).
+
+  The `id` is the whole point of the OOB swap — it is how the fragment finds the
+  element it is replacing, so it has to match the one the board rendered.
+{% endcomment %}
+{% load humanize %}
+<div class="kanban-col-head" id="col-head-{{ stage_value }}"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <span class="pill stage-{{ stage_value }}">{{ info.label }}</span>
+  <span class="kanban-total">${{ info.total|floatformat:0|intcomma }} · {{ info.count }}</span>
+</div>

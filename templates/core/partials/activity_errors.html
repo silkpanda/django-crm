@@ -1,0 +1,9 @@
+{% comment %}
+  activity_errors.html: validation errors for the inline "log activity" form.
+
+  TEACHING NOTE: a "partial" is a fragment, not a whole page. The log-activity
+  form posts through HTMX (a library that lets a request swap one piece of the
+  page instead of reloading all of it). When validation fails, the server
+  sends back just this list for HTMX to drop in.
+{% endcomment %}
+<ul class="errorlist">{% for field, errs in form.errors.items %}{% for e in errs %}<li>{{ e }}</li>{% endfor %}{% endfor %}</ul>

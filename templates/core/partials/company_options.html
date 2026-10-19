@@ -1,0 +1,28 @@
+{% comment %}
+  company_options.html: the `<option>` rows for the desk form's Company datalist.
+
+  This is the WHOLE response of `views_leads.company_suggestions`, and that is
+  deliberate. The input asks for `hx-swap="innerHTML"` against `#company-options`,
+  and `innerHTML` replaces a node's CHILDREN — so the `<datalist id="company-options">`
+  tag in lead_form.html stays where it is and only its contents are rewritten.
+  Wrapping these lines in anything (a `<select>`, a `<ul>`) would leave a second
+  element sitting inside the datalist, and a browser ignores options that are not
+  direct children of it. The dropdown would then render permanently empty, and
+  the failure would look like a broken endpoint rather than a stray wrapper.
+
+  TEACHING NOTE — `company_names` is a flat list of strings from `values_list`,
+  already sliced to ten and ordered by name in the view (see COMPANY_SUGGEST_LIMIT
+  there). The template has no say in how many come back or in what order, which
+  is the point of putting that in the view: the cap is a property of the endpoint
+  for anybody who calls it, not of whichever template happens to render it.
+
+  SECURITY NOTE — `{{ name }}` is escaped and is NEVER marked `|safe`. A company
+  name is typed in by strangers, through this very desk form and through the
+  public one, so a name like `Bob's <b>Dental</b>` has to reach the browser as
+  those literal characters. An unescaped option value here would be stored XSS:
+  the payload lives in the database and fires at whichever member of staff next
+  opens the desk form, which is a far better target than the stranger who typed
+  it. There is no `|safe` anywhere on this path and there must never be one.
+{% endcomment %}
+{% for name in company_names %}<option value="{{ name }}"></option>
+{% endfor %}

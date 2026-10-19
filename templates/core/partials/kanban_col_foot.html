@@ -1,0 +1,12 @@
+{% comment %}
+  kanban_col_foot.html: the weighted-value footer of one pipeline column.
+
+  TEACHING NOTE: the twin of kanban_col_head.html, including the out-of-band
+  trick. Both halves of a column's arithmetic have to refresh on a move — a
+  header showing the new total above a footer still quoting the old weighted
+  value is the same frozen-board bug wearing a smaller hat.
+{% endcomment %}
+{% load humanize %}
+<div class="kanban-col-foot" id="col-foot-{{ stage_value }}"{% if oob %} hx-swap-oob="true"{% endif %}>
+  <span>Weighted: ${{ info.weighted|floatformat:0|intcomma }}</span>
+</div>

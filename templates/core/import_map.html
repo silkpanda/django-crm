@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% comment %}
+  import_map.html — Step 2 of the CSV import wizard.
+
+  TEACHING NOTE: this template shows a form where the user maps CSV columns to
+  model fields. Each model field has a dropdown of available CSV columns. The
+  form POSTs to the same URL with step="map" and the view stores the mapping
+  in the session.
+{% endcomment %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Import CSV</h1>
+  <p class="muted">Map CSV columns to {{ import_type|default:"company" }} fields.</p>
+</div>
+
+<div class="card">
+  <h2>Step 2: Map Columns</h2>
+  <p class="muted">File: {{ csv_name }}</p>
+  <form method="post" action="{% url 'import_wizard_map' %}">
+    {% csrf_token %}
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Model Field</th>
+          <th>CSV Column</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for field_name, label in fields.items %}
+        <tr>
+          <td><label for="map_{{ field_name }}">{{ label }}{% if field_name == required %} <span class="muted">(required)</span>{% endif %}</label></td>
+          <td>
+            <select name="map_{{ field_name }}" id="map_{{ field_name }}">
+              <option value="">— Skip —</option>
+              {% for col in columns %}
+              <option value="{{ col }}">{{ col }}</option>
+              {% endfor %}
+            </select>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+
+    <div class="form-actions">
+      <a href="{% url 'import_wizard' %}" class="btn btn-secondary">Back</a>
+      <button type="submit" class="btn btn-primary">Preview Import</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

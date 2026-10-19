@@ -1,0 +1,25 @@
+{% comment %}
+  scope_switch.html: the Admin-only Team/Mine toggle for the deal figures.
+
+  TEACHING NOTE: this is a partial because two pages need the identical switch —
+  the dashboard and the pipeline board — and a toggle that exists once can't
+  drift out of sync with itself. The Admin's choice is remembered in the session,
+  so clicking "Mine" here carries to the board without the link having to carry
+  the parameter anywhere.
+
+  The whole thing is behind `can_switch_scope`, and that is politeness, not
+  security: Reps and Viewers have no choice to make (core/scope.py decides it
+  from their role) and typing ?scope=team into the URL changes nothing for them.
+  Hiding a control stops nobody; scoped_deals() is what actually narrows the
+  numbers.
+
+  `aria-current="true"` on the active link is the same fact announced to a screen
+  reader instead of only shown in colour — two buttons that differ by a
+  background colour tell a blind user nothing about which one is selected.
+{% endcomment %}
+{% if can_switch_scope %}
+<div class="scope-switch" role="group" aria-label="Deal scope">
+  <a class="scope-opt{% if scope == 'team' %} active{% endif %}" href="?scope=team"{% if scope == 'team' %} aria-current="true"{% endif %}>Team</a>
+  <a class="scope-opt{% if scope == 'mine' %} active{% endif %}" href="?scope=mine"{% if scope == 'mine' %} aria-current="true"{% endif %}>Mine</a>
+</div>
+{% endif %}

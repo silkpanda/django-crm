@@ -1,0 +1,433 @@
+/* app.css: every layout and component style in the app.
+
+   TEACHING NOTE: colours, fonts and spacing are never typed in here directly.
+   They're CSS custom properties ("variables" like `var(--brand-navy)`) defined
+   once in tokens.css. Change a brand colour there and every page follows.
+   base.html loads tokens.css first so these names exist before this file uses
+   them.
+
+   Shape rules come from the house style (STYLEGUIDE.md): square corners, 1px
+   borders, flat surfaces, no gradients. The `@media (max-width: 720px)` block
+   near the end is the phone layout. Its comments record the `min-width: auto`
+   trap (REVIEW-17), which took three tries to find. Read them before
+   "simplifying" anything there.
+
+   `box-sizing: border-box` below makes an element's width include its padding
+   and border. Without it, `width: 100%` plus padding overflows its parent. */
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--body);
+  background: var(--surface-3);
+}
+a { color: var(--brand-blue-text); text-decoration: none; }
+a:hover { text-decoration: underline; }
+h1, h2, h3 { color: var(--ink); margin: 0 0 var(--space-3); }
+h1 { font-family: var(--font-display); font-weight: 700; font-size: 28px; line-height: 1.2; }
+h2 { font-family: var(--font-display); font-weight: 500; font-size: 20px; }
+h3 { font-size: 16px; font-weight: 500; }
+:focus-visible { outline: 2px solid var(--brand-blue); outline-offset: 2px; }
+
+/* ---------- shell ---------- */
+.shell { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+/* The sidebar is exactly one screen tall and stays put while the page scrolls
+   (REVIEW-27). `position: sticky` means "scroll normally until you reach `top`,
+   then stick there"; with `top: 0` that's from the first pixel. Without the
+   `height: 100vh` (100% of the viewport, the visible part of the window), a grid
+   item stretches to the height of the whole PAGE: 2920px on the dashboard, with
+   Settings at the very bottom. `overflow-y: auto` lets the bar scroll on its own
+   in a window too short to fit every link, instead of cutting the last ones off.
+   The phone layout undoes all three in the 720px block below. */
+.sidebar {
+  background: var(--brand-navy); color: #fff; display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.brand {
+  font-family: var(--font-display); font-weight: 700; font-size: 20px; letter-spacing: .06em;
+  padding: var(--space-5) var(--space-4); color: #fff; border-bottom: 3px solid var(--brand-red);
+}
+.brand span { color: var(--brand-red); }
+.nav { list-style: none; margin: 0; padding: var(--space-3) 0; }
+.nav a {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: var(--space-2) var(--space-4); color: rgba(255,255,255,.82);
+  font-family: var(--font-label); font-size: 16px; letter-spacing: .02em;
+  border-left: 3px solid transparent;
+}
+.nav a:hover { background: var(--brand-navy-2); color: #fff; text-decoration: none; }
+.nav a.active { border-left-color: var(--brand-red); background: var(--brand-navy-2); color: #fff; }
+.badge {
+  display: inline-block; min-width: 20px; padding: 0 6px; font-size: 12px; line-height: 20px; text-align: center;
+  background: var(--brand-red); color: #fff; font-family: var(--font-body); font-weight: 500;
+}
+.sidebar-foot { padding: var(--space-4); font-size: 13px; color: rgba(255,255,255,.6); }
+/* A labelled sub-group in the sidebar, separated from the main nav by a hairline.
+   Used for Settings, which is a different kind of thing from the records above it.
+   `margin-top: auto` on THIS element (not on .sidebar-foot) is what pins Settings
+   to the bottom of the flex column. Two auto margins would split the free space
+   between them and float Settings into the middle of the bar.
+   "Bottom of the column" is only the bottom of the SCREEN because .sidebar is
+   exactly 100vh tall. Take that away and the column is as tall as the page, and
+   Settings ends up three and a half screens down the dashboard (REVIEW-27). */
+.sidebar-group { border-top: 1px solid rgba(255,255,255,.12); margin-top: auto; }
+.sidebar-group-label {
+  display: block; padding: var(--space-3) var(--space-4) var(--space-1);
+  font-family: var(--font-label); text-transform: uppercase; font-size: 11px;
+  letter-spacing: .08em; color: rgba(255,255,255,.5);
+}
+.sidebar-group .nav { padding-top: 0; padding-bottom: var(--space-3); }
+
+.main { min-width: 0; display: flex; flex-direction: column; }
+.topbar {
+  display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) var(--space-5);
+  background: var(--surface); border-bottom: 1px solid var(--line-soft);
+}
+.topbar form { flex: 1; max-width: 480px; }
+.topbar input[type=search] { width: 100%; }
+.usermenu { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); font-size: 14px; }
+/* QA-15: Password and Sign out were 62x21 and 51x21, next to each other on a
+   phone. Pad the hit area to the 44px guideline; the words stay the same size. */
+.usermenu a, .usermenu .btn-link { min-height: 44px; display: inline-flex; align-items: center; }
+.role-chip { font-family: var(--font-label); text-transform: uppercase; font-size: 12px; letter-spacing: .06em;
+  padding: 2px 8px; border: 1px solid var(--line); color: var(--ink-3); }
+.content { padding: var(--space-5); max-width: 1280px; width: 100%; }
+
+.page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-4); flex-wrap: wrap; }
+.page-head h1 { margin: 0; }
+.page-head .sub { color: var(--muted); font-size: 14px; margin-top: var(--space-1); }
+.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ---------- controls ---------- */
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border: 1px solid transparent;
+  border-radius: var(--radius); font: 500 14px var(--font-body); cursor: pointer; text-decoration: none;
+  background: var(--brand-blue); color: #fff;
+}
+.btn:hover { background: var(--brand-blue-hover); text-decoration: none; }
+.btn-secondary { background: var(--surface); color: var(--ink-2); border-color: var(--line); }
+.btn-secondary:hover { background: var(--surface-2); }
+/* A disabled button has to LOOK disabled. Found by the Phase 4 browser
+   click-through: the `disabled` attribute was set correctly, but with no styling
+   the Connect button rendered in the full primary blue, so it read as live and a
+   user clicking it got nothing back. Attribute without appearance is a bug you
+   only find by looking. */
+.btn[disabled],
+.btn:disabled {
+  background: var(--surface-3); color: var(--muted); border-color: var(--line);
+  cursor: not-allowed; opacity: .75;
+}
+.btn[disabled]:hover,
+.btn:disabled:hover { background: var(--surface-3); }
+.btn-danger { background: var(--surface); color: var(--brand-red-text); border-color: var(--brand-red); }
+.btn-danger:hover { background: var(--brand-red); color: #fff; }
+.btn-link { background: none; border: none; padding: 0; color: var(--brand-blue-text); cursor: pointer; font: inherit; }
+.btn-sm { padding: 4px 10px; font-size: 13px; }
+
+input[type=text], input[type=email], input[type=url], input[type=search], input[type=number],
+input[type=password], input[type=date], input[type=datetime-local], select, textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: var(--radius);
+  font: 14px var(--font-body); color: var(--ink-2); background: var(--surface);
+}
+select[multiple] { min-height: 96px; }
+textarea { resize: vertical; }
+label { display: block; font-family: var(--font-label); font-size: 14px; color: var(--ink-3); margin-bottom: 4px; }
+.field { margin-bottom: var(--space-4); }
+.field .help { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.errorlist { list-style: none; margin: 4px 0 0; padding: 0; color: var(--brand-red-text); font-size: 13px; }
+.form-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0 var(--space-5); }
+.form-grid .wide { grid-column: 1 / -1; }
+
+/* ---------- panels & tables ---------- */
+.panel { background: var(--surface); border: 1px solid var(--line-soft); margin-bottom: var(--space-5); }
+.panel-head { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-soft); }
+.panel-head h2 { margin: 0; font-size: 17px; }
+.panel-body { padding: var(--space-4); }
+.panel-body.flush { padding: 0; }
+
+.filters { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: flex-end; padding: var(--space-3) var(--space-4);
+  border-bottom: 1px solid var(--line-soft); background: var(--surface-2); }
+.filters .field { margin: 0; min-width: 150px; flex: 0 1 180px; }
+.filters .field.grow { flex: 1 1 240px; }
+
+.table-wrap { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: 14px; }
+table.data th { text-align: left; font-family: var(--font-label); font-weight: 400; text-transform: uppercase; font-size: 12px;
+  letter-spacing: .06em; color: var(--ink-3); padding: 10px var(--space-4); border-bottom: 1px solid var(--line); white-space: nowrap; }
+table.data th a { color: inherit; }
+table.data td { padding: 10px var(--space-4); border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+table.data tr:hover td { background: var(--surface-2); }
+table.data td.num, table.data th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.empty { padding: var(--space-6) var(--space-4); text-align: center; color: var(--muted); }
+
+.pager { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) var(--space-4); font-size: 14px; }
+
+.pill { display: inline-block; padding: 1px 8px; font-size: 12px; font-family: var(--font-label); letter-spacing: .03em;
+  border: 1px solid var(--line); color: var(--ink-3); background: var(--surface); white-space: nowrap; }
+.stage-lead { border-color: #9aa7b3; }
+.stage-qualified { border-color: var(--brand-blue); color: var(--brand-blue-text); }
+.stage-proposal { border-color: #6f42c1; color: #5a32a3; }
+.stage-negotiation { border-color: var(--warn); color: var(--warn); }
+.stage-won { background: var(--ok); border-color: var(--ok); color: #fff; }
+.stage-lost { background: var(--brand-red); border-color: var(--brand-red); color: #fff; }
+.tag { background: var(--surface-3); border-color: var(--line-soft); }
+/* A buying role is not a stage and not a tag: it's an outline, because a contact
+   can hold several at once and a row of filled blocks reads like a status. Navy
+   rather than the primary blue, which this palette keeps for links and focus
+   rings only (PIPE-7 caught the same blue leak in the kanban highlight). */
+.role-pill { border-color: var(--brand-navy); color: var(--brand-navy); background: var(--surface); }
+/* The Champion is the one role worth spotting at a glance on a 25-row list, so
+   it is the one that gets filled. `.role-{{ role.slug }}` in the templates means
+   any role added later can be styled the same way without touching this file. */
+.role-pill.role-champion { background: var(--brand-navy); border-color: var(--brand-navy); color: #fff; }
+
+/* ---------- detail pages ---------- */
+.detail-grid { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: var(--space-5); align-items: start; }
+dl.facts { display: grid; grid-template-columns: 130px 1fr; gap: var(--space-2) var(--space-3); margin: 0; font-size: 14px; }
+dl.facts dt { font-family: var(--font-label); color: var(--muted); }
+dl.facts dd { margin: 0; color: var(--ink-2); overflow-wrap: anywhere; }
+.prewrap { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+.tabs { display: flex; gap: 0; border-bottom: 1px solid var(--line-soft); padding: 0 var(--space-4); }
+.tabs button { background: none; border: none; border-bottom: 3px solid transparent; padding: 10px 14px; cursor: pointer;
+  font: 15px var(--font-label); color: var(--muted); }
+.tabs button[aria-selected=true] { color: var(--ink); border-bottom-color: var(--brand-red); }
+[role=tabpanel][hidden] { display: none; }
+
+.timeline { list-style: none; margin: 0; padding: 0; }
+.timeline li { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line-soft); }
+.timeline li.new { background: #eef6ff; }
+.timeline .meta { display: flex; gap: var(--space-2); align-items: center; font-size: 13px; color: var(--muted); margin-bottom: 4px; flex-wrap: wrap; }
+.timeline .meta form { margin-left: auto; }
+/* QA-01: the empty state is CSS, not markup. The server sends the same <ul>
+   whether the timeline holds one entry or forty, so only the browser can tell
+   "empty" from "not yet", and :has() is the browser saying so. It replaces a
+   placeholder div that app.js deleted on the first add and could therefore
+   never bring back — delete the last entry and this rule puts the words back.
+   Scoped to #timeline (the timeline's own id) so the dashboard's other lists
+   keep their own empty states. */
+#timeline:not(:has(> li))::before { content: "Nothing logged yet."; display: block; padding: var(--space-4); color: var(--muted); font-size: 14px; }
+/* QA-15: the timeline's "Remove" button measured 47x20 at 375px, and it fires a
+   delete with no undo. min-height/min-width pad the HIT AREA to 44x44 and the
+   inline-flex keeps the word centred in it — the glyph stays the size it was. */
+.timeline .meta form .btn-link { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+.kind { font-family: var(--font-label); text-transform: uppercase; font-size: 11px; letter-spacing: .08em; padding: 1px 6px;
+  color: #fff; background: var(--ink-3); }
+.kind-call { background: var(--brand-blue); }
+.kind-meeting { background: #6f42c1; }
+.kind-email { background: var(--ok); }
+.activity-form { padding: var(--space-4); border-bottom: 1px solid var(--line-soft); background: var(--surface-2); }
+.activity-form .row { display: grid; grid-template-columns: 140px 1fr; gap: var(--space-3); }
+
+.history-entry { padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line-soft); font-size: 14px; }
+.history-entry ul { margin: 4px 0 0; padding-left: 18px; }
+.history-entry del { color: var(--brand-red-text); }
+.history-entry ins { color: var(--ok); text-decoration: none; }
+
+/* ---------- dashboard ---------- */
+.stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-4); margin-bottom: var(--space-5); }
+.stat { background: var(--surface); border: 1px solid var(--line-soft); border-top: 3px solid var(--brand-navy); padding: var(--space-4); }
+.stat .label { font-family: var(--font-label); text-transform: uppercase; font-size: 12px; letter-spacing: .06em; color: var(--muted); }
+.stat .value { font-family: var(--font-display); font-size: 28px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.cols-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+
+
+/* ---------- lead intake ---------- */
+/* THE HONEYPOT. Off-screen, not `display: none`.
+
+   TEACHING NOTE — why not display:none. A honeypot works by being an input a
+   person cannot see and therefore never fills in, while a bot that inspects the
+   markup does not know that and fills it in. `display: none` and
+   `visibility: hidden` are detectable: a scraper that checks whether a field is
+   rendered before typing into it will skip an invisible one and sail past the
+   whole defence. Parking it far outside the viewport is still invisible to a
+   person (and unreachable by Tab, see tabindex on the widget) while the element
+   remains laid out, measurable and obviously present in the DOM.
+
+   `left` rather than `top` is deliberate too: a top offset would add a tall
+   empty gap and let the page scroll to a blank region, which is both ugly and
+   another thing that gives the trick away. */
+.hp {
+  position: absolute !important;
+  left: -9999px !important;
+  top: auto !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+}
+/* One row in the new-leads queue: the owner picker and its button, side by
+   side, narrow enough that the table does not need a horizontal scroll at the
+   laptop width the queue is actually used at. */
+.assign-form { display: flex; gap: var(--space-2); align-items: center; }
+.assign-form select { min-width: 0; max-width: 180px; }
+/* The quiet second line under a deal name or a contact email on the queue.
+   Same size and `--muted` grey as a field's help text, so "Lakeside Dental"
+   under a deal name reads as the same kind of aside rather than as body copy.
+   Not a brand colour: this is chrome, not something to be looked at. */
+td .help { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* ---------- messages ---------- */
+.messages { list-style: none; margin: 0 0 var(--space-4); padding: 0; }
+.messages li { padding: var(--space-3) var(--space-4); border-left: 4px solid var(--brand-blue); background: var(--surface); margin-bottom: var(--space-2); }
+.messages li.success { border-left-color: var(--ok); }
+.messages li.error { border-left-color: var(--brand-red); }
+.messages li.warning { border-left-color: var(--warn); }
+
+/* ---------- auth pages ---------- */
+.auth-wrap { min-height: 100vh; display: grid; place-items: center; background: var(--brand-navy); padding: var(--space-4); }
+.auth-card { width: 100%; max-width: 400px; background: var(--surface); border-top: 4px solid var(--brand-red); padding: var(--space-6); }
+.auth-card .brand { color: var(--ink); padding: 0 0 var(--space-4); border: none; }
+
+/* ---------- kanban pipeline ---------- */
+.kanban { display: flex; gap: var(--space-4); overflow-x: auto; padding-bottom: var(--space-4); align-items: flex-start; }
+.kanban-col { flex: 1 0 260px; min-width: 260px; background: var(--surface-2); border: 1px solid var(--line-soft); display: flex; flex-direction: column; }
+.kanban-col-head { display: flex; justify-content: space-between; align-items: center; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line-soft); }
+.kanban-total { font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.kanban-col-body { flex: 1; padding: var(--space-3); min-height: 120px; }
+/* The empty-column message is generated here rather than rendered by the view.
+   A placeholder baked into the HTML is a snapshot of one render: the moment a
+   card arrives or leaves, the server is no longer there to correct it, and the
+   message either survives next to a card or vanishes from a column that needs
+   it. Keying the message on "this body has no cards in it right now" makes it
+   impossible to be wrong (PIPE-1). */
+.kanban-col-body:not(:has(.deal-card))::before { content: "No deals"; display: block; padding: var(--space-4); text-align: center; color: var(--muted); font-size: 13px; }
+.kanban-col-foot { padding: var(--space-2) var(--space-4); border-top: 1px solid var(--line-soft); font-size: 13px; color: var(--muted); }
+.deal-card { background: var(--surface); border: 1px solid var(--line-soft); padding: var(--space-3); margin-bottom: var(--space-2); cursor: grab; }
+.deal-card:active { cursor: grabbing; }
+.deal-card-name { font-weight: 500; margin-bottom: 2px; }
+.deal-card-company { font-size: 13px; color: var(--muted); margin-bottom: var(--space-2); }
+.deal-card-meta { display: flex; justify-content: space-between; align-items: center; font-size: 13px; }
+.deal-card-value { font-weight: 500; color: var(--ink); font-variant-numeric: tabular-nums; }
+.deal-card-owner { color: var(--muted); }
+/* Highlight for the column a card is hovering over. app.js adds and removes the
+   class; navy and grey rather than the old blue wash, which broke the brand. */
+.kanban-col.drag-over { border-color: var(--brand-navy); background: #f3f4f6; }
+.hint { color: var(--muted); font-size: 14px; margin-top: var(--space-4); }
+
+/* ---------- tasks ---------- */
+.section-label { font-family: var(--font-label); text-transform: uppercase; font-size: 13px; letter-spacing: .06em; color: var(--muted); margin: var(--space-5) 0 var(--space-3); }
+.section-label.overdue { color: var(--brand-red-text); }
+.task-list { list-style: none; margin: 0; padding: 0; }
+.task-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line-soft); }
+.task-item:last-child { border-bottom: none; }
+.task-overdue { background: #fff5f5; }
+.task-check { margin-top: 2px; }
+/* QA-15: the hit area is 44x44, not the 22x22 glyph. min-width/min-height keep
+   the glyph the same size — padding out the box, not the character — and the
+   inline-flex centres the tick in the bigger target so the two don't disagree. */
+.task-check-btn { background: none; border: 1px solid var(--line); min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; line-height: 1; padding: 0; color: var(--muted); }
+.task-check-btn:hover { border-color: var(--brand-blue); color: var(--brand-blue); }
+.task-body { flex: 1; display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.task-title { font-weight: 500; }
+.task-due { font-size: 13px; color: var(--muted); }
+.task-due-overdue { color: var(--brand-red-text); font-weight: 500; }
+.task-link { font-size: 13px; }
+.priority-high { border-color: var(--brand-red); color: var(--brand-red-text); }
+.priority-low { border-color: var(--line); color: var(--muted); }
+
+/* ---------- tasks panel (QA-06) ---------- */
+/* The panel is the same <ul class="task-list"> My Day uses, sitting in the right
+   column of a detail page instead of full width, so it only needs to shed the
+   page furniture: no rule between rows, tighter vertical padding to match the
+   narrower column. The checkbox keeps the base rule's 44x44 target. */
+.panel .task-list { margin: 0; }
+.panel .task-item { padding: var(--space-2) var(--space-4); align-items: center; }
+.panel .task-title { font-size: 14px; }
+
+/* ---------- search ---------- */
+.search-form { flex: 1; max-width: 480px; }
+.search-results { list-style: none; margin: 0; padding: 0; }
+.search-result { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--line-soft); }
+.search-result:last-child { border-bottom: none; }
+.type-company { background: var(--brand-navy); color: #fff; }
+.type-contact { background: var(--brand-blue); color: #fff; }
+.type-deal { background: var(--ok); color: #fff; }
+
+/* ---------- dashboard extras ---------- */
+.pipeline-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; }
+.pipeline-count { font-size: 13px; color: var(--muted); flex: 1; }
+.pipeline-value { font-weight: 500; font-variant-numeric: tabular-nums; }
+.win-rate { font-family: var(--font-display); font-size: 36px; color: var(--ink); }
+
+/* ---------- responsive ---------- */
+@media (max-width: 900px) {
+  .detail-grid, .cols-2 { grid-template-columns: 1fr; }
+  .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 720px) {
+  /* Two words used below. A GRID item is any direct child of an element with
+     `display: grid`; a FLEX item is any direct child of `display: flex`. Both
+     start with `min-width: auto`, which means "never narrower than my widest
+     content". That default is the whole REVIEW-17 story: one long unbreakable
+     thing inside, and the box refuses to shrink to the screen.
+
+     `minmax(0, 1fr)`, not `1fr`: plain `1fr` (one fraction of the free space)
+     means `minmax(auto, 1fr)`, and that `auto` floor lets the column grow to
+     fit its widest child. The same trap as below, one level up. */
+  .shell { grid-template-columns: minmax(0, 1fr); }
+  /* `position: static; height: auto; overflow: visible` undo the desktop sticky
+     column. On a phone the sidebar is a strip across the top. A 100vh sticky
+     strip would fill the whole screen and never scroll away. */
+  .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; min-width: 0;
+             position: static; height: auto; overflow: visible; }
+  /* Once `.shell` is one column, `.sidebar` is a grid item, and a grid item's default
+     `min-width: auto` sizes it to its content. `min-width: 0` releases it. */
+  .brand { border-bottom: none; padding: var(--space-3) var(--space-4); }
+  /* REVIEW-17, the actual culprit. The flex item inside `.sidebar` is NOT `ul.nav` —
+     it's the bare `<nav>` element wrapped around it. Every earlier attempt put
+     `min-width: 0` on the `ul`, which is a child of the flex item and not a flex item
+     itself, so the rule did nothing: `<nav>` kept its `min-width: auto`, grew to its
+     links (524px), and the `ul` at `width: 100%` filled that. Style the element that
+     is actually in the flex row, and the strip scrolls inside a screen-wide box. */
+  .sidebar > nav { flex: 1 1 100%; min-width: 0; }
+  .nav { display: flex; overflow-x: auto; padding: 0; width: 100%; border-top: 1px solid var(--brand-navy-2); }
+  .nav a { border-left: none; border-bottom: 3px solid transparent; white-space: nowrap; }
+  .nav a.active { border-bottom-color: var(--brand-red); }
+  /* Same story for the Settings group: `margin-top: auto` is a column-flex trick and
+     does the wrong thing once the sidebar is a row, so reset it and let the group
+     sit under the nav as its own full-width strip. */
+  .sidebar-group { margin-top: 0; width: 100%; }
+  .sidebar-group .nav { border-top: none; }
+  .sidebar-group-label { padding-left: var(--space-4); }
+  .sidebar-foot { display: none; }
+  .content { padding: var(--space-4); }
+  .topbar { padding: var(--space-3) var(--space-4); flex-wrap: wrap; }
+  /* `minmax(0, 1fr)` for the same reason as `.shell` above, and matching the
+     desktop rule on .form-grid. With plain `1fr` the Email settings page's token
+     cache path — one unbreakable string — stretched the column to 446px. */
+  .form-grid { grid-template-columns: minmax(0, 1fr); }
+  .form-grid code { overflow-wrap: anywhere; }
+  .activity-form .row { grid-template-columns: 1fr; }
+  dl.facts { grid-template-columns: 1fr; }
+  dl.facts dt { margin-top: var(--space-2); }
+  .kanban { flex-direction: column; }
+  .kanban-col { flex: 1 1 auto; width: 100%; }
+}
+
+/* ---------- deal scope switch ---------- */
+/* The Admin's Team/Mine toggle (QA-04). Sized like .btn-sm on an .btn-secondary
+   shell so it sits in the same page-head as .actions without shouting over the
+   h1. The active option is navy rather than the primary blue: this is a
+   two-state control sitting inside a page whose primary action is the blue
+   button, and reusing that blue made the toggle read as the main thing to
+   click. Navy is also the only colour already carrying "you are here" in this
+   stylesheet (.stat's top border, .nav a.active). */
+.scope-switch { display: inline-flex; gap: var(--space-1); }
+.scope-switch .scope-opt {
+  display: inline-flex; align-items: center; padding: 4px 10px; font-size: 13px;
+  font-weight: 500; text-decoration: none; border: 1px solid var(--line);
+  border-radius: var(--radius); background: var(--surface); color: var(--ink-2);
+}
+.scope-switch .scope-opt:hover { background: var(--surface-2); text-decoration: none; }
+.scope-switch .scope-opt.active {
+  background: var(--brand-navy); border-color: var(--brand-navy); color: #fff;
+}
+/* Under the pipeline figure: says whose deals the number is, so a Rep's total
+   and an Admin's are visibly two different measurements. */
+.stat .stat-scope {
+  margin-top: var(--space-1); font-size: 12px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .06em;
+}

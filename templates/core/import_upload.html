@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% comment %}
+  import_upload.html — Step 1 of the CSV import wizard.
+
+  TEACHING NOTE: this template shows a simple file upload form. The form POSTs
+  to /import/upload/ and the view parks the file in a temp location. The file
+  is never stored permanently: it's deleted when the import commits, when a new
+  upload replaces it, or after a day if the wizard is abandoned.
+{% endcomment %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Import CSV</h1>
+  <p class="muted">Upload a CSV file to import companies or contacts.</p>
+</div>
+
+<div class="card">
+  <h2>Step 1: Upload</h2>
+  <form method="post" enctype="multipart/form-data" action="{% url 'import_wizard_upload' %}">
+    {% csrf_token %}
+    <fieldset class="form-group">
+      <legend>What's in the file?</legend>
+      <label><input type="radio" name="import_type" value="company" checked> Companies</label>
+      <label><input type="radio" name="import_type" value="contact"> Contacts</label>
+      <p class="muted">Importing contacts that belong to companies? Import the companies first; contacts link to them by name.</p>
+    </fieldset>
+    <div class="form-group">
+      <label for="csv_file">CSV File (UTF-8, up to {{ max_mb }} MB)</label>
+      <input type="file" name="csv_file" id="csv_file" accept=".csv" required>
+    </div>
+    <button type="submit" class="btn btn-primary">Upload & Continue</button>
+  </form>
+</div>
+{% endblock %}

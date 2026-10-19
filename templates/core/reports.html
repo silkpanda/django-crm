@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{# Reports: pipeline, conversion, rep performance, forecast. Definitions live in core/reports.py. #}
+{% block content %}
+<h1>Reports</h1>
+
+{% comment %}
+  Four tables, no charts. A chart library would be a dependency and a rendering
+  surface for numbers that are easier to check as text — "3 of 7" is a fact you
+  can argue with, a bar you have to eyeball is not. Every figure below is a
+  computed value, and each table says which function produced it.
+{% endcomment %}
+
+<section>
+  <h2>Pipeline by stage</h2>
+  <table class="report-table">
+    <thead>
+      <tr><th>Stage</th><th class="num">Deals</th><th class="num">Value</th><th class="num">Weighted</th></tr>
+    </thead>
+    <tbody>
+      {% for stage, row in pipeline.items %}
+      <tr>
+        <td>{{ stage.label }}</td>
+        <td class="num">{{ row.count }}</td>
+        <td class="num">${{ row.value|floatformat:0 }}</td>
+        <td class="num">${{ row.weighted_value|floatformat:0 }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    Weighted is value &times; the stage's probability, or the deal's own if it has one.
+    Every stage is listed even at zero — a row that disappears when a column empties
+    is a row somebody screenshots and is then wrong by next Tuesday.
+  </p>
+</section>
+
+<section>
+  <h2>Stage conversion</h2>
+  <table class="report-table">
+    <thead>
+      <tr><th>Stage</th><th class="num">Reached</th><th class="num">Advanced</th><th class="num">Rate</th></tr>
+    </thead>
+    <tbody>
+      {% for row in conversion %}
+      <tr>
+        <td>{{ row.label }}</td>
+        <td class="num">{{ row.reached }}</td>
+        <td class="num">{{ row.advanced }}</td>
+        <td class="num">
+          {% if row.rate is not None %}{% widthratio row.rate 1 100 as pct %}{{ pct }}%{% else %}&mdash;{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    Of the deals that ever stood in this stage, how many reached a later one.
+    Read from the change history, not from where deals sit today: a rate built
+    from current stages counts only the deals you still have, which rises as the
+    pipeline empties. The final stage has no stage after it, so nothing advances
+    from it and its rate is 0% — a measurement, not a gap in the data. A dash
+    means nobody reached that stage at all.
+  </p>
+</section>
+
+<section>
+  <h2>By owner</h2>
+  <table class="report-table">
+    <thead>
+      <tr>
+        <th>Owner</th><th class="num">Open</th><th class="num">Weighted</th>
+        <th class="num">Won</th><th class="num">Lost</th><th class="num">Win rate</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in reps %}
+      <tr>
+        <td>{{ row.owner }}</td>
+        <td class="num">{{ row.open_deals }}</td>
+        <td class="num">${{ row.open_weighted|floatformat:0 }}</td>
+        <td class="num">{{ row.won }}</td>
+        <td class="num">{{ row.lost }}</td>
+        <td class="num">
+          {% if row.win_rate is not None %}{% widthratio row.win_rate 1 100 as pct %}{{ pct }}%{% else %}&mdash;{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  <p class="muted">
+    Open and closed are counted separately on purpose. "Open" is live pipeline
+    and "closed" is what has been decided, and folding them together produces a
+    win rate that moves every time a deal is created rather than every time one
+    is won. A dash means nothing has closed yet, which is a different statement
+    from a zero.
+  </p>
+</section>
+
+<section>
+  <h2>Forecast &mdash; next 90 days</h2>
+  <ul class="report-facts">
+    <li><strong>{{ forecast.open_count }}</strong> open deal{{ forecast.open_count|pluralize }}</li>
+    <li><strong>${{ forecast.open_weighted|floatformat:0 }}</strong> weighted</li>
+    <li><strong>${{ forecast.won_value|floatformat:0 }}</strong> already won</li>
+    {% if forecast.undated %}
+      <li><strong>{{ forecast.undated }}</strong> with no expected close date &mdash; counted above, but they
+          are not in any particular month</li>
+    {% endif %}
+  </ul>
+  <p class="muted">
+    Weighted pipeline plus what is already closed. A deal with no expected date is
+    counted in the total and reported separately: "we have $X in the pipe" is true
+    whether or not anybody promised a date, and dropping them would understate the
+    pipeline by a number the board already knows is wrong.
+  </p>
+</section>
+{% endblock %}

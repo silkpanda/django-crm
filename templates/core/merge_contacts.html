@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% comment %}
+  merge_contacts.html — Admin picks which contact survives a merge.
+
+  TEACHING NOTE: same pattern as merge_companies.html. The admin picks which
+  contact survives, and all child records (activities, tasks, deals) are
+  re-pointed to the survivor. The loser is deleted.
+{% endcomment %}
+
+{% block title %}Merge Contacts{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Merge Contacts</h1>
+  <p class="muted">Choose which contact survives. All activities, tasks, and deals will be moved to the survivor.</p>
+</div>
+
+<div class="card">
+  <h2>Current Contact</h2>
+  <p><strong>{{ contact.full_name }}</strong></p>
+  <p class="muted">{{ contact.email|default:"No email" }} | {{ contact.title|default:"No title" }}</p>
+</div>
+
+{% if duplicates %}
+<div class="card">
+  <h2>Potential Duplicates</h2>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="loser_id" value="{{ contact.pk }}">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Survive?</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Title</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dup in duplicates %}
+        <tr>
+          <td><input type="radio" name="survivor_id" value="{{ dup.pk }}" required></td>
+          <td><a href="{{ dup.get_absolute_url }}">{{ dup.full_name }}</a></td>
+          <td>{{ dup.email|default:"—" }}</td>
+          <td>{{ dup.title|default:"—" }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-actions">
+      <a href="{{ contact.get_absolute_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-danger">Merge</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">No potential duplicates found for this contact.</p>
+  <a href="{{ contact.get_absolute_url }}" class="btn btn-secondary">Back</a>
+</div>
+{% endif %}
+{% endblock %}

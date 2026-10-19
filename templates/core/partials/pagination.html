@@ -1,0 +1,17 @@
+{% comment %}
+  pagination.html: "1-25 of 140" plus Previous/Next under a list.
+
+  TEACHING NOTE: page size is PAGE_SIZE in settings.py. The links rebuild the
+  URL from `querystring`, which carries the current filters and sort, so
+  turning the page doesn't drop them. `&amp;` is how a literal `&` has to be
+  written inside an HTML attribute.
+{% endcomment %}
+{% if is_paginated %}
+<div class="pager">
+  <span>{{ page_obj.start_index }}–{{ page_obj.end_index }} of {{ paginator.count }}</span>
+  <span class="actions">
+    {% if page_obj.has_previous %}<a class="btn btn-secondary btn-sm" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>{% endif %}
+    {% if page_obj.has_next %}<a class="btn btn-secondary btn-sm" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}page={{ page_obj.next_page_number }}">Next</a>{% endif %}
+  </span>
+</div>
+{% elif paginator %}<div class="pager"><span>{{ paginator.count }} total</span></div>{% endif %}

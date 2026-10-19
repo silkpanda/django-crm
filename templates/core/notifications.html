@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% comment %}
+  notifications.html: everything this user has been told, newest first.
+
+  TEACHING NOTE — every row is a POST form, not a link. That looks awkward and is
+  the whole design: the bell's number only falls when a notification is marked
+  read, and a plain <a href> cannot change anything on the server. So the row
+  posts to notification_read, which stamps read_at and then redirects onward to
+  whatever the notification was about. One control does both jobs, and it works
+  with JavaScript switched off.
+
+  There is no separate "mark read" tick next to the text for the same reason:
+  two controls for one action is two chances to ship a button that only half
+  works, and one of them always gets forgotten.
+
+  SECURITY NOTE — `url` comes out of a database column, so it is escaped by
+  default here and there is no |safe anywhere on this page. Nothing a browser
+  sends ends up in that column (core/notifications.py writes it from reverse()),
+  but "nothing does today" is not a property a template should depend on.
+{% endcomment %}
+{% load humanize %}
+{% block title %}Notifications{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Notifications</h1>
+    <div class="sub">Yours only. Newest first.</div>
+  </div>
+  <div class="actions">
+    <form method="post" action="{% url 'notification_read_all' %}">
+      {% csrf_token %}
+      <button class="btn btn-secondary" type="submit">Mark all read</button>
+    </form>
+  </div>
+</div>
+<div class="panel">
+  <div class="panel-body flush">
+    <ul class="task-list">
+      {% for note in notifications %}
+      <li class="task-item">
+        <form method="post" action="{% url 'notification_read' note.pk %}" class="task-check">
+          {% csrf_token %}
+          <button type="submit" class="task-check-btn" title="Mark read">{% if note.read_at %}&#10003;{% else %}&#9634;{% endif %}</button>
+        </form>
+        <div class="task-body">
+          <span class="task-title">
+            {% if note.url %}<a href="{{ note.url }}">{{ note.text }}</a>{% else %}{{ note.text }}{% endif %}
+          </span>
+          <span class="task-due">{{ note.created_at|naturaltime }}</span>
+          <span class="pill">{{ note.get_kind_display }}</span>
+        </div>
+      </li>
+      {% empty %}
+      <li class="empty">Nothing here. You are up to date.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% include "core/partials/pagination.html" %}
+{% endblock %}

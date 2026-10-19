@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% comment %}
+  contact_list.html: the Contacts list. Same layout and rules as company_list.html.
+
+  TEACHING NOTE: sorting goes through the view's allowlist, Export CSV reuses
+  the on-screen filters, and New/Import hide for roles the server would refuse
+  anyway. company_list.html has the longer version.
+
+  Buying roles ride in the Name cell rather than getting a column of their own.
+  The table already carries six columns and has to stay readable at 375px, where
+  a seventh would push Company off the screen; the roles belong next to the name
+  anyway, because "who is this person in the sale" is the first question you ask
+  about a row on this list.
+{% endcomment %}
+{% load crm %}
+{% block title %}Contacts{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Contacts</h1>
+  <div class="actions"><a class="btn btn-secondary" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}export=1">Export CSV</a>{% if can_create %}<a class="btn btn-secondary" href="{% url 'import_wizard' %}">Import CSV</a>{% endif %}{% if can_create %}<a class="btn" href="{% url 'contact_create' %}">New contact</a>{% endif %}</div></div>
+<div class="panel">
+  {% include "core/partials/filters.html" %}
+  <div class="table-wrap"><table class="data">
+    <thead><tr>
+      <th><a href="{% sort_link sort_base current_sort 'name' %}">Name {% sort_arrow current_sort 'name' %}</a></th>
+      <th>Email</th><th>Phone</th>
+      <th><a href="{% sort_link sort_base current_sort 'company' %}">Company {% sort_arrow current_sort 'company' %}</a></th>
+      <th><a href="{% sort_link sort_base current_sort 'lifecycle' %}">Lifecycle {% sort_arrow current_sort 'lifecycle' %}</a></th>
+      <th>Owner</th>
+    </tr></thead>
+    <tbody>
+    {% for c in object_list %}
+      <tr><td><a href="{{ c.get_absolute_url }}">{{ c.full_name }}</a>{% if c.title %}<div style="font-size:13px;color:var(--muted)">{{ c.title }}</div>{% endif %}{% for r in c.roles.all %}<span class="pill role-pill role-{{ r.slug }}">{{ r }}</span> {% endfor %}</td>
+        <td>{% if c.email %}<a href="mailto:{{ c.email }}">{{ c.email }}</a>{% endif %}</td><td>{{ c.phone }}</td>
+        <td>{% if c.company %}<a href="{{ c.company.get_absolute_url }}">{{ c.company }}</a>{% else %}—{% endif %}</td>
+        <td><span class="pill">{{ c.get_lifecycle_display }}</span></td><td>{{ c.owner|default:"—" }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">No contacts match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "core/partials/pagination.html" %}
+</div>
+{% endblock %}

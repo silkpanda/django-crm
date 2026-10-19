@@ -1,0 +1,20 @@
+{% comment %}
+  filters.html: the filter bar above every list page.
+
+  TEACHING NOTE: a GET form, not a POST, so the filters land in the URL
+  (`?lifecycle=customer&owner=3`). A filtered list can be bookmarked or shared,
+  and Export CSV reuses the same query string to export exactly what's on
+  screen. The hidden `sort` field keeps your column sort when a filter changes.
+  django-filter (the library that builds these fields from each model) only
+  accepts the fields it declared, so a hand-edited URL can't filter on anything
+  else.
+{% endcomment %}
+<form class="filters" method="get">
+  {% for field in filter.form %}
+  <div class="field{% if field.name == 'q' %} grow{% endif %}">
+    <label for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}
+  </div>
+  {% endfor %}
+  {% if current_sort %}<input type="hidden" name="sort" value="{{ current_sort }}">{% endif %}
+  <div class="actions"><button class="btn btn-sm" type="submit">Filter</button><a class="btn btn-secondary btn-sm" href="?">Clear</a></div>
+</form>

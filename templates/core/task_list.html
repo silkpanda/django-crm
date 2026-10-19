@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% comment %}
+  task_list.html: "My Day" — your open tasks in four buckets (Overdue, Today,
+  Next 7 days, No due date), then "Done (last 7 days)", then an Admin-only
+  "Team's open tasks". The last two are QA-05 and QA-06; see the comment above
+  each for what was broken without them.
+
+  TEACHING NOTE: the view draws the bucket lines at LOCAL midnight
+  (core/dates.py), so "Today" means the office's today. It used UTC's until
+  REVIEW-25, which made the day start at 7 pm Chicago time.
+  LocalDayBoundaryTests pins the clock to prove it. Each checkbox is a tiny
+  POST form, so completing a task works without JavaScript.
+{% endcomment %}
+{% load humanize %}
+{% block title %}My Day{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>My Day</h1><div class="sub">Your open tasks, bucketed by urgency.</div></div>
+  {% if can_create %}<div class="actions"><a class="btn" href="{% url 'task_create' %}">New task</a></div>{% endif %}
+</div>
+
+{% for bucket_name, bucket_tasks in buckets.items %}
+  {% if bucket_name == "overdue" %}<h2 class="section-label overdue">Overdue</h2>
+  {% elif bucket_name == "today" %}<h2 class="section-label">Today</h2>
+  {% elif bucket_name == "next7" %}<h2 class="section-label">Next 7 days</h2>
+  {% else %}<h2 class="section-label">No due date</h2>{% endif %}
+  <div class="panel">
+    <div class="panel-body flush">
+      <ul class="task-list">
+        {% for task in bucket_tasks %}
+        <li class="task-item {% if bucket_name == 'overdue' %}task-overdue{% endif %}">
+          <form method="post" action="{% url 'task_complete' task.pk %}" class="task-check">
+            {% csrf_token %}
+            <button type="submit" class="task-check-btn" title="{% if task.status == 'done' %}Reopen{% else %}Complete{% endif %}">{% if task.status == 'done' %}&#10003;{% else %}&#9634;{% endif %}</button>
+          </form>
+          <div class="task-body">
+            <span class="task-title">{{ task.title }}</span>
+            {% if task.due_at %}<span class="task-due {% if bucket_name == 'overdue' %}task-due-overdue{% endif %}">{{ task.due_at|naturaltime }}</span>{% endif %}
+            {% if task.company %}<span class="task-link"><a href="{{ task.company.get_absolute_url }}">{{ task.company }}</a></span>{% endif %}
+            {% if task.deal %}<span class="task-link"><a href="{{ task.deal.get_absolute_url }}">{{ task.deal }}</a></span>{% endif %}
+            <span class="pill priority-{{ task.priority }}">{{ task.get_priority_display }}</span>
+            <a class="task-link" href="{% url 'task_update' task.pk %}">Edit</a>
+          </div>
+        </li>
+        {% empty %}
+        <li class="empty">Nothing here.</li>
+        {% endfor %}
+      </ul>
+    </div>
+  </div>
+{% endfor %}
+
+{% comment %}
+  QA-05. The buckets above are filtered to status=OPEN, so ticking the wrong box
+  used to delete the task from the only screen that showed it — and the reopen
+  toggle lived inside that OPEN-only loop, so it could never render. Two sections
+  close that: what you finished recently (where the toggle finally has something
+  to sit on) and, for an Admin, what everyone else has outstanding.
+
+  Both reuse the same POST form as the buckets above, so completing, reopening
+  and the no-JavaScript fallback all behave identically. The `next` is left off:
+  on My Day there is nowhere better to go.
+{% endcomment %}
+<h2 class="section-label">Done (last 7 days)</h2>
+<div class="panel">
+  <div class="panel-body flush">
+    <ul class="task-list">
+      {% for task in done_recent %}
+      <li class="task-item">
+        <form method="post" action="{% url 'task_complete' task.pk %}" class="task-check">
+          {% csrf_token %}
+          <button type="submit" class="task-check-btn" title="Reopen">&#10003;</button>
+        </form>
+        <div class="task-body">
+          <span class="task-title">{{ task.title }}</span>
+          {% if task.completed_at %}<span class="task-due">{{ task.completed_at|naturaltime }}</span>{% endif %}
+          {% if task.company %}<span class="task-link"><a href="{{ task.company.get_absolute_url }}">{{ task.company }}</a></span>{% endif %}
+          {% if task.deal %}<span class="task-link"><a href="{{ task.deal.get_absolute_url }}">{{ task.deal }}</a></span>{% endif %}
+          <a class="task-link" href="{% url 'task_update' task.pk %}">Edit</a>
+        </div>
+      </li>
+      {% empty %}
+      <li class="empty">Nothing finished this week.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{% comment %}
+  SECURITY NOTE: `team_open` is an empty queryset for anyone who is not an Admin
+  (see TaskListView.get_context_data), so this section can only ever render for
+  one. A Rep's My Day never widens to other people's work.
+{% endcomment %}
+{% if team_open %}
+<h2 class="section-label">Team's open tasks</h2>
+<div class="panel">
+  <div class="panel-body flush">
+    <ul class="task-list">
+      {% for task in team_open %}
+      <li class="task-item">
+        <form method="post" action="{% url 'task_complete' task.pk %}" class="task-check">
+          {% csrf_token %}
+          <button type="submit" class="task-check-btn" title="Complete">&#9634;</button>
+        </form>
+        <div class="task-body">
+          <span class="task-title">{{ task.title }}</span>
+          {% if task.due_at %}<span class="task-due">{{ task.due_at|naturaltime }}</span>{% endif %}
+          <span class="task-link">{{ task.assignee|default:"unassigned" }}</span>
+          {% if task.company %}<span class="task-link"><a href="{{ task.company.get_absolute_url }}">{{ task.company }}</a></span>{% endif %}
+          {% if task.deal %}<span class="task-link"><a href="{{ task.deal.get_absolute_url }}">{{ task.deal }}</a></span>{% endif %}
+          <a class="task-link" href="{% url 'task_update' task.pk %}">Edit</a>
+        </div>
+      </li>
+      {% empty %}
+      <li class="empty">Nothing outstanding.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endif %}
+{% endblock %}

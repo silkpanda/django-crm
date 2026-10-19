@@ -1,0 +1,13 @@
+{% comment %}
+  tabs.html: the Timeline / History tab buttons on every detail page.
+
+  TEACHING NOTE: these buttons never talk to the server. app.js catches the
+  click and flips the `hidden` attribute on the two panels. `role`,
+  `aria-selected` and `aria-controls` are ARIA attributes (Accessible Rich
+  Internet Applications): they tell a screen reader these are tabs and which
+  panel each one controls.
+{% endcomment %}
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true" aria-controls="panel-timeline" type="button">Timeline</button>
+  <button role="tab" aria-selected="false" aria-controls="panel-history" type="button">History</button>
+</div>

@@ -1,0 +1,26 @@
+{% comment %}
+  timeline_items.html: the timeline's entries, and nothing else — no <ul>, no
+  wrapper. That is deliberate on both sides.
+
+  Two callers, one definition:
+    - timeline_panel.html includes it inside `<ul class="timeline" id="timeline">`
+      for the page's first render.
+    - activity_create returns it on an HTMX success, where the form's
+      hx-swap="innerHTML" drops exactly these <li>s in place of #timeline's
+      contents. An innerHTML swap must return CHILDREN, which is why this file
+      can't wrap itself in a list of its own.
+
+  QA-02: the list comes back sorted by the database (Activity.Meta.ordering,
+  newest first), so a call logged today but dated last week lands below today's
+  note. The browser used to insert at the top and win that argument; it doesn't
+  get an opinion any more.
+
+  `new_id` is the one entry to highlight — the one just logged, the pale blue
+  row that fades as you read past it. It arrives as an id rather than a flag
+  because a flag can't survive a loop: `{% if new %}` would either mark every
+  entry or none. On the first render `new_id` isn't in the context at all, so
+  `a.pk == new_id` compares an int to nothing and is False for every row, which
+  is exactly right — nothing on a freshly loaded page is new.
+{% endcomment %}
+{% load crm %}
+{% for a in activities %}{% if a.pk == new_id %}{% include "core/partials/activity_item.html" with a=a new=True %}{% else %}{% include "core/partials/activity_item.html" with a=a new=False %}{% endif %}{% endfor %}

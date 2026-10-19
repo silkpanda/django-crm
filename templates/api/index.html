@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% comment %}
+  api/index.html — the human-readable face of /api/.
+
+  TEACHING NOTE: `/api/` answers twice, from one view and one list of routes
+  (`endpoint_docs()` in core/api.py). A browser sends `Accept: text/html,...` and
+  gets this page; anything asking for JSON — or sending no Accept at all, which
+  is curl, a script and the test client — gets the object. See `wants_html()`
+  for why the test is the raw header rather than `request.accepts()`.
+
+  Why bother with a page at all, when the JSON is right there? Because the
+  people who need to know this API exists are Reps and the person who has to
+  approve it, and neither of them is going to curl /api/ and read a JSON object
+  to find out whether they can. It also stops the API root being a bare 404,
+  which is what a GET of `/api` with no trailing slash looks like.
+
+  The rows are a table and not a list of links to the endpoints themselves: the
+  detail routes need a real pk, and printing `/api/companies/0/` would be a URL
+  that 404s. Each path is printed in its `<pk>` shape instead, which is the shape
+  a client actually writes.
+{% endcomment %}
+{% block title %}API{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>API</h1>
+    <div class="sub">Read-only JSON over companies, contacts and deals. Session login — the same sign-in as the rest of the app.</div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Endpoints</h2><span class="pill">GET only</span></div>
+  <div class="panel-body flush">
+    <div class="table-wrap"><table class="data">
+      <thead><tr><th>Path</th><th>Method</th><th>Returns</th><th>Who may read it</th></tr></thead>
+      <tbody>
+        {% for endpoint in endpoints %}
+        <tr>
+          <td><code>{{ endpoint.path }}</code></td>
+          <td>{{ endpoint.method }}</td>
+          <td>{{ endpoint.returns }}</td>
+          <td>{{ endpoint.auth }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-head"><h2>Using it</h2></div>
+  <div class="panel-body">
+    <p>
+      There is no API key. A client signs in through
+      <a href="{% url 'login' %}">{% url 'login' %}</a>, keeps the session cookie, and sends it on
+      every request. An anonymous request gets a <code>403</code> with a JSON body rather than the
+      login page — a redirect to HTML is not an answer a client can use.
+    </p>
+    <p>
+      Lists are 50 to a page and take <code>?page=N</code>. Asking for a page past the end returns
+      <code>200</code> with an empty <code>results</code> list, so a client walking pages never has to
+      treat the last one as a special case.
+    </p>
+    <p>
+      <strong>Money is a string.</strong> <code>value</code> and <code>weighted_value</code> are sent
+      as decimal strings, not JSON numbers, because a JSON number is a double and
+      <code>$1,234,567.89</code> does not survive one. Parse them with a decimal type.
+    </p>
+    <p class="hint">
+      There is nothing to write to. Every route answers GET; anything else is a <code>405</code>.
+    </p>
+  </div>
+</div>
+{% endblock %}

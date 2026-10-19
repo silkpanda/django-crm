@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% comment %}
+  pipeline.html: the kanban board, one column per stage, deals as cards.
+
+  TEACHING NOTE: SortableJS (vendored into static/vendor, so no CDN) makes the
+  cards draggable, and app.js saves the move. Each column shows its total and
+  its weighted value: value times probability, summed. A $10,000 deal at 25%
+  counts as $2,500 of likely revenue. pipeline_columns() in views.py adds these
+  up in Python over the deals it already loaded for the cards, rather than
+  asking the database a second time.
+
+  Two details here that look like nothing and are everything:
+
+  `data-can-edit` — the view's own permission answer, handed to the script.
+  SortableJS ignores the HTML5 `draggable` attribute, so without this the board
+  would be draggable for a read-only user and the server would have to refuse
+  every move (PIPE-5).
+
+  No "No deals" placeholder. It used to be rendered here, once, which meant it
+  went stale the moment a card moved — the destination column showed a card AND
+  the message for being empty. The empty state is now a CSS `:has()` rule keyed
+  on the column body actually containing cards, so it cannot be wrong (PIPE-1).
+
+  The `.sub` line says whose deals the columns hold, because the board's scope
+  isn't obvious any more: a Rep always sees only their own, but an Admin can be
+  looking at "Mine" and needs to know that's why the board looks thin. The same
+  scope_switch partial puts the toggle in the head (QA-04).
+{% endcomment %}
+{% load humanize static %}
+{% block title %}Pipeline{% endblock %}
+{% block extra_head %}<script src="{% static 'vendor/sortable.min.js' %}" defer></script>{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Pipeline</h1><div class="sub">Drag deals between stages. Changes save automatically. · {% if scope == 'mine' %}Your deals{% else %}Team{% endif %}</div></div><div class="actions">{% include "core/partials/scope_switch.html" %}</div></div>
+<div class="kanban" data-can-edit="{% if can_edit %}true{% else %}false{% endif %}">
+  {% for stage_value, info in stages.items %}
+  <div class="kanban-col" data-stage="{{ stage_value }}">
+    {% include "core/partials/kanban_col_head.html" with stage_value=stage_value info=info %}
+    <div class="kanban-col-body" id="col-{{ stage_value }}">
+      {% for deal in info.deals %}
+        {% include "core/partials/deal_card.html" %}
+      {% endfor %}
+    </div>
+    {% include "core/partials/kanban_col_foot.html" with stage_value=stage_value info=info %}
+  </div>
+  {% endfor %}
+</div>
+{% if not can_edit %}
+<p class="hint">You can view the pipeline but not move deals. Only the deal's owner or an admin can change stages.</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,6 @@
+-r requirements.txt
+pytest-django>=4.9
+factory-boy>=3.3
+bandit>=1.8
+pip-audit>=2.7
+detect-secrets>=1.5

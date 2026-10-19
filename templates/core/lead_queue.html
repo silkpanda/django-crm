@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+{% comment %}
+  lead_queue.html: every new lead, waiting for an owner. Admins and Reps.
+
+  TEACHING NOTE — the first column links the DEAL, not the company, because the
+  deal is the thing somebody is being asked to decide about. It shows the
+  company underneath because "Lakeside Dental - new office" is not a company name
+  and nobody can tell from the first line who they are ringing.
+
+  The Action column holds a different control depending on who is looking, and
+  that is the whole point of the change rather than an inconsistency:
+
+    - "Pick up" is for everyone who can see the queue. It POSTs to
+      `lead_claim`, and the server decides the owner, so a Rep can only ever
+      claim a lead FOR THEMSELVES. There is no dropdown of other people's names
+      in front of a Rep.
+    - The assign `<select>` renders for `user_role == 'Admin'` ONLY. It is a
+      `<select>` of Admins and Reps plus a submit button, one pair per row, and
+      `assign_form` is built ONCE in the view and rendered in every row: the
+      queryset behind it is the permission, and one form means one definition of
+      who may be given a lead (core/forms_leads.LeadAssignForm) rather than one
+      per row that could drift.
+
+  SECURITY NOTE — both hiding and showing are politeness. The queue is gated on
+  role in the view, and `lead_claim` re-checks the role AND re-checks that the
+  deal is still unowned and still at the Lead stage inside a single conditional
+  UPDATE, so a Rep who hand-writes the claim URL for somebody else's lead gets
+  nothing and an error message rather than the deal. The dropdown disappearing
+  for Reps is a courtesy to the Rep; the 403 in the view is the lock.
+
+  The Team column answers "who SENT this lead", not "where did the customer first
+  come from", and those are two different questions. It reads `deal.source` —
+  stamped by `create_lead` from whichever team or form took the call — and falls
+  back to `deal.company.source` when that is empty, because every lead filed
+  before `Deal.source` existed has no value there, and showing them what they
+  showed yesterday beats showing a dash. The fallback is also why the company
+  JOIN is still in the queryset: most leads are for an account somebody opened
+  months ago, so it is the path that actually renders most of the time.
+{% endcomment %}
+{% block title %}New leads{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>New leads</h1>
+  <p class="sub">Unowned, still at the Lead stage. Pick one up and it's yours, with a to-do due tomorrow.</p>
+</div>
+{% if assign_error %}
+<ul class="messages"><li class="error">{{ assign_error }}</li></ul>
+{% endif %}
+<div class="panel">
+{% if deals %}
+  <div class="table-wrap">
+  <table class="data">
+    <thead><tr>
+      <th>Company</th><th>Contact</th><th>Team</th><th>Submitted</th><th>Action</th>
+    </tr></thead>
+    <tbody>
+    {% for deal in deals %}
+      <tr>
+        <td>
+          <a href="{{ deal.get_absolute_url }}">{{ deal }}</a>
+          <div class="help">{{ deal.company }}</div>
+        </td>
+        <td>
+          {% if deal.primary_contact %}
+            <a href="{{ deal.primary_contact.get_absolute_url }}">{{ deal.primary_contact.full_name }}</a>
+            {% if deal.primary_contact.email %}<div class="help">{{ deal.primary_contact.email }}</div>{% endif %}
+          {% else %}&mdash;{% endif %}
+        </td>
+        <td>{% if deal.source or deal.company.source %}<span class="pill">{{ deal.source|default:deal.company.source }}</span>{% else %}&mdash;{% endif %}</td>
+        <td>{{ deal.created_at|date:"M j, Y g:i A" }}</td>
+        <td>
+          <form method="post" action="{% url 'lead_claim' deal.pk %}" class="assign-form">
+            {% csrf_token %}
+            <button class="btn btn-sm" type="submit">Pick up</button>
+          </form>
+          {% if user_role == 'Admin' %}
+          <form method="post" action="{% url 'lead_assign' deal.pk %}" class="assign-form">
+            {% csrf_token %}
+            {{ assign_form.owner }}
+            <button class="btn btn-sm" type="submit">Assign</button>
+          </form>
+          {% endif %}
+        </td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  </div>
+{% else %}
+  <p class="empty">No leads waiting. Everything that came in has been picked up.</p>
+{% endif %}
+</div>
+{% endblock %}

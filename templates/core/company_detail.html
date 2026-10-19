@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% comment %}
+  company_detail.html: one company. Timeline and history on the left; details,
+  contacts and deals on the right.
+
+  TEACHING NOTE: `show_links=True` makes each timeline entry link to the
+  contact or deal it was logged against, because a company's timeline collects
+  entries from all of them.
+
+  SECURITY NOTE: Website goes through `safe_href`, which only lets http:// and
+  https:// become a link. A website of `javascript:alert(1)` would otherwise run
+  code when clicked. `rel="noopener noreferrer"` stops the opened site from
+  reaching back into this tab through `window.opener`.
+{% endcomment %}
+{% load crm humanize %}
+{% block title %}{{ object.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ object.name }}</h1>
+    <div class="sub"><span class="pill">{{ object.get_lifecycle_display }}</span>{% if object.industry %} · {{ object.industry }}{% endif %}</div></div>
+  <div class="actions">
+    {% if can_edit %}<a class="btn btn-secondary" href="{% url 'company_update' object.pk %}">Edit</a>{% endif %}
+    {% if user_role == "Admin" %}<a class="btn btn-secondary" href="{% url 'company_merge' object.pk %}">Merge duplicates</a>{% endif %}
+    {% if can_delete %}<a class="btn btn-danger" href="{% url 'company_delete' object.pk %}">Delete</a>{% endif %}
+  </div>
+</div>
+<div class="detail-grid">
+  <div>
+    <section class="panel">
+      {% include "core/partials/tabs.html" %}
+      {% with show_links=True %}{% include "core/partials/timeline_panel.html" %}{% endwith %}
+      {% include "core/partials/history_panel.html" %}
+    </section>
+  </div>
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Details</h2></div>
+      <div class="panel-body"><dl class="facts">
+        <dt>Domain</dt><dd>{{ object.domain|default:"—" }}</dd>
+        <dt>Website</dt><dd>{% with href=object.website|safe_href %}{% if href %}<a href="{{ href }}" rel="noopener noreferrer" target="_blank">{{ object.website }}</a>{% else %}{{ object.website|default:"—" }}{% endif %}{% endwith %}</dd>
+        <dt>Phone</dt><dd>{{ object.phone|default:"—" }}</dd>
+        <dt>Address</dt><dd class="prewrap">{{ object.address|default:"—" }}</dd>
+        <dt>Owner</dt><dd>{{ object.owner|default:"—" }}</dd>
+        <dt>Source</dt><dd>{{ object.source|default:"—" }}</dd>
+        <dt>Tags</dt><dd>{% for t in object.tags.all %}<span class="pill tag">{{ t }}</span> {% empty %}—{% endfor %}</dd>
+        {% if object.notes %}<dt>Notes</dt><dd class="prewrap">{{ object.notes }}</dd>{% endif %}
+      </dl></div>
+    </section>
+    {% include "core/partials/tasks_panel.html" %}
+    <section class="panel">
+      <div class="panel-head"><h2>Contacts</h2>{% if user_can_create %}<a href="{% url 'contact_create' %}?company={{ object.pk }}">Add</a>{% endif %}</div>
+      <ul class="timeline">
+        {% for c in contacts %}<li><a href="{{ c.get_absolute_url }}">{{ c.full_name }}</a>{% if c.title %} · {{ c.title }}{% endif %}{% for r in c.roles.all %}<span class="pill role-pill role-{{ r.slug }}">{{ r }}</span> {% endfor %}</li>
+        {% empty %}<li class="empty">No contacts.</li>{% endfor %}
+      </ul>
+    </section>
+    <section class="panel">
+      <div class="panel-head"><h2>Deals</h2>{% if user_can_create %}<a href="{% url 'deal_create' %}?company={{ object.pk }}">Add</a>{% endif %}</div>
+      <ul class="timeline">
+        {% for d in deals %}<li><a href="{{ d.get_absolute_url }}">{{ d.name }}</a>
+          <div class="meta"><span class="pill stage-{{ d.stage }}">{{ d.get_stage_display }}</span> ${{ d.value|floatformat:0|intcomma }}</div></li>
+        {% empty %}<li class="empty">No deals.</li>{% endfor %}
+      </ul>
+    </section>
+  </div>
+</div>
+{% endblock %}

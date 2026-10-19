@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% comment %}
+  deal_detail.html: one deal. Timeline, history, and its facts (stage, value,
+  probability, expected close).
+
+  TEACHING NOTE: no Merge button. Merge exists for companies and contacts,
+  where duplicates come from imports and typos. Two deals with the same name
+  are usually two real deals.
+
+  The quote link is inside `{% if object.quote %}`, and that test is safe
+  because Deal.quote is the REVERSE side of a OneToOneField: where there is no
+  quote, Django raises RelatedObjectDoesNotExist, a class that subclasses
+  AttributeError precisely so a template asking "does this deal have a quote?"
+  gets False rather than an error. There is deliberately no "create a quote"
+  link here — the quote editor is reached from the deal's quote page, and a
+  second door onto it would be a second place for the permission rules to be
+  forgotten.
+{% endcomment %}
+{% load crm humanize %}
+{% block title %}{{ object.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div><h1>{{ object.name }}</h1>
+    <div class="sub"><span class="pill stage-{{ object.stage }}">{{ object.get_stage_display }}</span> · <a href="{{ object.company.get_absolute_url }}">{{ object.company }}</a></div></div>
+  <div class="actions">
+    {% if object.quote %}<a class="btn btn-secondary" href="{% url 'quote_detail' object.pk %}">Quote</a>{% endif %}
+    {% if can_edit %}<a class="btn btn-secondary" href="{% url 'deal_update' object.pk %}">Edit</a>{% endif %}
+    {% if can_delete %}<a class="btn btn-danger" href="{% url 'deal_delete' object.pk %}">Delete</a>{% endif %}
+  </div>
+</div>
+<div class="detail-grid">
+  <div>
+    <section class="panel">
+      {% include "core/partials/tabs.html" %}
+      {% include "core/partials/timeline_panel.html" %}
+      {% include "core/partials/history_panel.html" %}
+    </section>
+  </div>
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Details</h2></div>
+      <div class="panel-body"><dl class="facts">
+        <dt>Value</dt><dd>${{ object.value|floatformat:2|intcomma }}</dd>
+        <dt>Probability</dt><dd>{{ object.effective_probability }}%{% if object.probability is None %} (stage default){% endif %}</dd>
+        <dt>Weighted</dt><dd>${{ object.weighted_value|floatformat:0|intcomma }}</dd>
+        <dt>Expected close</dt><dd>{{ object.expected_close|date:"M j, Y"|default:"—" }}</dd>
+        <dt>Contact</dt><dd>{% if object.primary_contact %}<a href="{{ object.primary_contact.get_absolute_url }}">{{ object.primary_contact }}</a>{% else %}—{% endif %}</dd>
+        <dt>Owner</dt><dd>{{ object.owner|default:"—" }}</dd>
+        <dt>In stage since</dt><dd>{{ object.stage_changed_at|date:"M j, Y" }} ({{ object.stage_changed_at|timesince }})</dd>
+        {% if object.closed_at %}<dt>Closed</dt><dd>{{ object.closed_at|date:"M j, Y" }}</dd>{% endif %}
+        {% if object.lost_reason %}<dt>Lost reason</dt><dd class="prewrap">{{ object.lost_reason }}</dd>{% endif %}
+      </dl></div>
+    </section>
+    {% include "core/partials/tasks_panel.html" %}
+  </div>
+</div>
+{% endblock %}

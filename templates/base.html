@@ -1,0 +1,132 @@
+{% comment %}
+  base.html — the page skeleton every other template builds on.
+
+  TEACHING NOTE — TEMPLATE INHERITANCE. This file defines the shared chrome
+  (the head, the sidebar, the top bar) once, and marks the holes child pages fill
+  with block tags. A page like company_list.html "extends" base.html and then
+  fills the content block. Write the layout once; every page inherits it.
+  (This note itself uses the comment/endcomment tag pair, which is the multi-line
+  form; the hash form is single-line only. Neither reaches the browser, unlike an
+  HTML comment.)
+
+  "load static" below enables the static tag, which builds correct URLs to files
+  in static/ so paths keep working when static serving changes.
+{% endcomment %}
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ brand_name }}{% endblock %} · {{ brand_name }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;500&family=Roboto+Slab:wght@500;700&family=Roboto:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="{% static 'css/tokens.css' %}">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+  <style id="brand-overrides">:root{ {{ brand_color_style }} }</style>
+  <script src="{% static 'vendor/htmx.min.js' %}" defer></script>
+  <script src="{% static 'js/app.js' %}" defer></script>
+  {% block extra_head %}{% endblock %}
+</head>
+{% comment %}
+  hx-headers puts the CSRF token on EVERY HTMX request coming from this page, so
+  our inline POSTs (logging an activity, deleting one) pass Django's CSRF check
+  without adding the token by hand each time. It's inherited by all child elements.
+{% endcomment %}
+<body hx-headers='{"X-CSRFToken": "{{ csrf_token }}"}'>
+{% block body %}
+{% with section=request.resolver_match.url_name|default:"" %}
+<div class="shell">
+  <aside class="sidebar">
+    <div class="brand">{{ brand_wordmark }} <span>{{ brand_wordmark_accent }}</span></div>
+    <nav>
+      <ul class="nav">
+        <li><a href="{% url 'dashboard' %}" class="{% if section == 'dashboard' %}active{% endif %}">Dashboard</a></li>
+        <li><a href="{% url 'company_list' %}" class="{% if section|slice:':7' == 'company' %}active{% endif %}">Companies</a></li>
+        <li><a href="{% url 'contact_list' %}" class="{% if section|slice:':7' == 'contact' %}active{% endif %}">Contacts</a></li>
+        <li><a href="{% url 'deal_list' %}" class="{% if section|slice:':4' == 'deal' %}active{% endif %}">Deals</a></li>
+        <li><a href="{% url 'pipeline' %}" class="{% if section == 'pipeline' %}active{% endif %}">Pipeline</a></li>
+        {% comment %}
+          Phase 6, reports. The definitions live in core/reports.py and this page is
+          scoped through the same core/scope.py call the pipeline board uses, so a
+          Rep's report describes the same book as a Rep's board.
+        {% endcomment %}
+        <li><a href="{% url 'report_index' %}" class="{% if section == 'report' %}active{% endif %}">Reports</a></li>
+        <li><a href="{% url 'task_list' %}" class="{% if section == 'task_list' %}active{% endif %}">Tasks{% if overdue_task_count %}<span class="badge">{{ overdue_task_count }}</span>{% endif %}</a></li>
+        {% comment %}
+          Phase 6, notifications. The bell is the one nav item that renders only
+          when there is something to say: `core.context_processors` counts the
+          unread rows for THIS user, so a Rep with a quiet bell sees no bell at
+          all rather than a grey zero. Same `badge` span as the Tasks and Leads
+          counts above, so one number looks the same everywhere in the sidebar.
+
+          Nothing here is a permission. The link is a convenience and the list
+          page behind it re-filters on the request's own user — hiding this from
+          a Viewer would be politeness that protected nothing.
+        {% endcomment %}
+        {% if unread_notifications %}
+        <li><a href="{% url 'notification_list' %}" class="{% if section|slice:':12' == 'notification' %}active{% endif %}">Notifications<span class="badge">{{ unread_notifications }}</span></a></li>
+        {% endif %}
+        {% comment %}
+          Phase 5, lead intake. Two links, two different rules:
+
+          "New lead" is for EVERY signed-in user, including a Viewer, because a
+          lead form is the one page a read-only person still has to be able to
+          use — the phone rings for whoever picks it up.
+
+          "Leads" (the queue) is Admins and Reps and carries the
+          `new_lead_count` badge, which core/context_processors.py computes for
+          the same two roles. The badge and the link share one `user_role` test on
+          purpose: Reps can now pick a lead up for themselves, so the badge is a
+          number they can ACT on and one they need in order to find the queue.
+          A Viewer is the other side of that test — they may file leads but may
+          neither open the queue nor work one, so a count is backlog trivia they
+          have no use for. Still politeness — the views re-check.
+        {% endcomment %}
+        <li><a href="{% url 'lead_create' %}" class="{% if section == 'lead_create' %}active{% endif %}">New lead</a></li>
+        {% if user_role == 'Admin' or user_role == 'Rep' %}
+          <li><a href="{% url 'lead_queue' %}" class="{% if section == 'lead_queue' %}active{% endif %}">Leads{% if new_lead_count %}<span class="badge">{{ new_lead_count }}</span>{% endif %}</a></li>
+        {% endif %}
+      </ul>
+    </nav>
+    {% comment %}
+      Admin-only links are hidden for other roles, but that is politeness, not
+      security — the view re-checks with `is_admin()`. Hiding it just keeps the
+      sidebar honest about what each role can actually reach. The heading is
+      inside the check too, so a Viewer doesn't get an empty "SETTINGS" label
+      with nothing under it.
+    {% endcomment %}
+    {% if user_role == 'Admin' %}
+      <div class="sidebar-group">
+        <span class="sidebar-group-label">Settings</span>
+        <ul class="nav">
+          <li><a href="{% url 'user_list' %}" class="{% if section|slice:':5' == 'user_' %}active{% endif %}">Users</a></li>
+        </ul>
+      </div>
+    {% endif %}
+    <div class="sidebar-foot">{{ brand_name }} · {{ brand_footer }}</div>
+  </aside>
+  <div class="main">
+    <header class="topbar">
+      <form method="get" action="{% url 'global_search' %}" class="search-form">
+        <input type="search" name="q" placeholder="Search companies, contacts, deals…" value="{{ request.GET.q|default:'' }}">
+      </form>
+      <div class="usermenu">
+        <span class="role-chip">{{ user_role }}</span>
+        <span>{{ user.get_full_name|default:user.username }}</span>
+        <a href="{% url 'password_change' %}">Password</a>
+        <form method="post" action="{% url 'logout' %}">{% csrf_token %}<button class="btn-link" type="submit">Sign out</button></form>
+      </div>
+    </header>
+    <main class="content">
+      {% if messages %}
+      <ul class="messages">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>
+      {% endif %}
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+{% endwith %}
+{% endblock %}
+</body>
+</html>

@@ -1,0 +1,15 @@
+{% comment %}
+  field.html: one labelled form field, with its help text and errors.
+
+  TEACHING NOTE: every form in the app renders through this, so fields look and
+  behave the same everywhere. Pass `wide=True` to span both columns of the form
+  grid. `field.id_for_label` ties the label to its input, so clicking the label
+  focuses the box and a screen reader reads them together. The `*` comes from
+  the form's own `required` flag, so it can't drift from what the server enforces.
+{% endcomment %}
+<div class="field{% if wide %} wide{% endif %}">
+  <label for="{{ field.id_for_label }}">{{ field.label }}{% if field.field.required %} *{% endif %}</label>
+  {{ field }}
+  {% if field.help_text %}<div class="help">{{ field.help_text }}</div>{% endif %}
+  {{ field.errors }}
+</div>

@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% comment %}
+  form.html: the create/edit page shared by companies, contacts, deals and tasks.
+
+  TEACHING NOTE: `novalidate` turns off the browser's own pop-up checks, so
+  every error comes from the server and looks the same. Browser checks are easy
+  to skip; the server's aren't. Fields named in the `wide` list span both columns.
+
+  The duplicate warning is a Phase 2 feature: a contact whose email, or a
+  company whose domain, already exists stops the save and links to the existing
+  record. "Save anyway" on an edit, "Create anyway" on a new one — `object.pk`
+  only exists once a record does, so the one template can say the right thing
+  for both. That button enables the hidden `confirm_duplicate` input and
+  resubmits. This input starts `disabled` because disabled fields are never
+  sent, so it can't go through by accident.
+{% endcomment %}
+{% block title %}{% if object %}Edit {{ object }}{% else %}New {{ model_name }}{% endif %}{% endblock %}
+{% block content %}
+<div class="page-head"><h1>{% if object %}Edit {{ object }}{% else %}New {{ model_name }}{% endif %}</h1></div>
+<div class="panel"><div class="panel-body">
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  {% if duplicate %}
+  {# Set by DuplicateCheckMixin: the form is valid, but this looks like a record we already have. #}
+  <ul class="messages"><li class="warning">
+    This looks like <a href="{{ duplicate.get_absolute_url }}">{{ duplicate }}</a>, which already exists.
+    Open that one instead, or create this anyway.
+    <input type="hidden" name="confirm_duplicate" value="1" disabled id="confirm-duplicate">
+    <button class="btn" type="submit" onclick="document.getElementById('confirm-duplicate').disabled = false">{% if object.pk %}Save anyway{% else %}Create anyway{% endif %}</button>
+  </li></ul>
+  {% endif %}
+  <div class="form-grid">
+  {% for field in form %}
+    {% if field.name in "notes address lost_reason tags" %}{% include "core/partials/field.html" with wide=True %}{% else %}{% include "core/partials/field.html" %}{% endif %}
+  {% endfor %}
+  </div>
+  <div class="actions">
+    <button class="btn" type="submit">Save</button>
+    <a class="btn btn-secondary" href="{% if cancel_url %}{{ cancel_url }}{% elif object %}{{ object.get_absolute_url }}{% else %}javascript:history.back(){% endif %}">Cancel</a>
+  </div>
+</form>
+</div></div>
+{% endblock %}

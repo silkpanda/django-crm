@@ -1,0 +1,16 @@
+{% extends "registration/auth_base.html" %}
+{% comment %}
+  lockout.html: shown after too many failed sign-ins.
+
+  TEACHING NOTE: django-axes (the login-lockout library) renders this, because
+  settings.py points AXES_LOCKOUT_TEMPLATE at it. The numbers in the text, 5
+  tries and 15 minutes, are copies of AXES_FAILURE_LIMIT and AXES_COOLOFF_TIME
+  in settings.py. Change them there and change them here, or the page tells
+  people the wrong wait.
+
+  SECURITY NOTE: the lockout is keyed on username AND IP together (finding
+  P1-02), so one person hammering one account can't lock out the whole office
+  sharing an internet connection.
+{% endcomment %}
+{% block title %}Account locked{% endblock %}
+{% block auth %}<h1>Too many attempts</h1><p>This account is locked for 15 minutes after 5 failed sign-ins. Wait it out, or ask an Admin to clear it.</p>{% endblock %}

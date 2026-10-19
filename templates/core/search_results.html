@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% comment %}
+  search_results.html: results for the search box in the top bar.
+
+  TEACHING NOTE: one box, three queries: the view searches companies, contacts
+  and deals separately and tags each result with its type. The search text is
+  shown back to you, autoescaped like everything else, so searching for
+  `<script>` displays it instead of running it (that would be reflected XSS,
+  Cross-Site Scripting).
+
+  QA-10: the count is `total`, not `results|length`. Those differ whenever the
+  search hit the per-type cap, which is exactly when quoting the wrong one is
+  most misleading: the page said "20 results" while five matches were never
+  rendered. `truncated` is what turns that from a silent lie into a sentence.
+{% endcomment %}
+{% block title %}Search{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Search</h1><div class="sub">{{ total }} result{{ total|pluralize }} for "{{ query }}".</div></div></div>
+{% if truncated %}
+<div class="panel">
+  <div class="panel-body">
+    Showing the first {{ cap }} of each type — narrow the search to see the rest.
+  </div>
+</div>
+{% endif %}
+<div class="panel">
+  <div class="panel-body flush">
+    <ul class="search-results">
+      {% for r in results %}
+      <li class="search-result">
+        <span class="pill type-{{ r.type|lower }}">{{ r.type }}</span>
+        <a href="{{ r.url }}">{{ r.name }}</a>
+      </li>
+      {% empty %}
+      <li class="empty">No matches found.</li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

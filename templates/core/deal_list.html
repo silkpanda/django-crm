@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% comment %}
+  deal_list.html: the Deals list. Same layout and rules as company_list.html.
+
+  TEACHING NOTE: no Import button, because the CSV importer only handles
+  companies and contacts (MODELS in views_import.py). `floatformat:0|intcomma`
+  shows 12500.00 as 12,500. Value is stored as an exact Decimal, not a float,
+  so money never picks up stray fractions of a cent.
+{% endcomment %}
+{% load crm humanize %}
+{% block title %}Deals{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Deals</h1>
+  <div class="actions"><a class="btn btn-secondary" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}export=1">Export CSV</a>{% if can_create %}<a class="btn" href="{% url 'deal_create' %}">New deal</a>{% endif %}</div></div>
+<div class="panel">
+  {% include "core/partials/filters.html" %}
+  <div class="table-wrap"><table class="data">
+    <thead><tr>
+      <th><a href="{% sort_link sort_base current_sort 'name' %}">Deal {% sort_arrow current_sort 'name' %}</a></th>
+      <th><a href="{% sort_link sort_base current_sort 'company' %}">Company {% sort_arrow current_sort 'company' %}</a></th>
+      <th><a href="{% sort_link sort_base current_sort 'stage' %}">Stage {% sort_arrow current_sort 'stage' %}</a></th>
+      <th class="num"><a href="{% sort_link sort_base current_sort 'value' %}">Value {% sort_arrow current_sort 'value' %}</a></th>
+      <th><a href="{% sort_link sort_base current_sort 'close' %}">Expected close {% sort_arrow current_sort 'close' %}</a></th>
+      <th>Owner</th>
+    </tr></thead>
+    <tbody>
+    {% for d in object_list %}
+      <tr><td><a href="{{ d.get_absolute_url }}">{{ d.name }}</a></td>
+        <td><a href="{{ d.company.get_absolute_url }}">{{ d.company }}</a></td>
+        <td><span class="pill stage-{{ d.stage }}">{{ d.get_stage_display }}</span></td>
+        <td class="num">${{ d.value|floatformat:0|intcomma }}</td>
+        <td>{{ d.expected_close|date:"M j, Y"|default:"—" }}</td><td>{{ d.owner|default:"—" }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">No deals match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "core/partials/pagination.html" %}
+</div>
+{% endblock %}

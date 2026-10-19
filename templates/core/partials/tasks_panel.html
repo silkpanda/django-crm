@@ -1,0 +1,46 @@
+{% comment %}
+  tasks_panel.html: the open tasks hanging off a company, contact or deal.
+
+  QA-06. Included in the right column of all three detail pages, below Details,
+  so the task you just made from this page is still here when you land back.
+
+  TEACHING NOTE: `task_rows` is a list of dicts built in the view — see
+  RecordDetailView.get_context_data. The template cannot call can_edit() to ask
+  "may THIS viewer tick THIS box", and it cannot compare a date against now to
+  decide whether a task is late. Both answers arrive pre-computed, one per row.
+
+  SECURITY NOTE: the complete form and the Edit link render only for rows the
+  view marked `editable`. That is politeness, not the lock — a Viewer who types
+  the URL still gets a 403 from can_edit in the view. Hiding the button stops
+  nobody; the server-side check stops everybody.
+
+  The hidden `next` carries the page this panel is on, so ticking a box returns
+  you here instead of dumping you on My Day. It is user input, so the view
+  re-validates it against this host before using it (see task_next_url).
+{% endcomment %}
+{% load humanize %}
+<section class="panel">
+  <div class="panel-head"><h2>Tasks</h2>{% if can_add_task %}<a href="{% url 'task_create' %}?{{ task_target.0 }}={{ task_target.1 }}">Add</a>{% endif %}</div>
+  <ul class="task-list">
+    {% for row in task_rows %}
+    <li class="task-item">
+      {% if row.editable %}
+      <form method="post" action="{% url 'task_complete' row.task.pk %}" class="task-check">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <button type="submit" class="task-check-btn" title="Complete">&#9634;</button>
+      </form>
+      {% endif %}
+      <div class="task-body">
+        <span class="task-title">{{ row.task.title }}</span>
+        {% if row.task.due_at %}<span class="task-due {% if row.overdue %}task-due-overdue{% endif %}">{{ row.task.due_at|naturaltime }}</span>{% endif %}
+        {% if row.task.assignee %}<span class="task-link">{{ row.task.assignee }}</span>{% endif %}
+        <span class="pill priority-{{ row.task.priority }}">{{ row.task.get_priority_display }}</span>
+        {% if row.editable %}<a class="task-link" href="{% url 'task_update' row.task.pk %}">Edit</a>{% endif %}
+      </div>
+    </li>
+    {% empty %}
+    <li class="empty">No open tasks.</li>
+    {% endfor %}
+  </ul>
+</section>

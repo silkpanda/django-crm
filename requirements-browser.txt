@@ -1,0 +1,4 @@
+# Optional: headless-browser tests (PIPE-9). Separate from requirements-dev.txt
+# because Playwright needs a browser download, which most checkouts don't want.
+-r requirements-dev.txt
+playwright>=1.40

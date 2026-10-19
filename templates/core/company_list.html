@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% comment %}
+  company_list.html: the Companies list (filter bar, sortable table, pages).
+
+  TEACHING NOTE: column headers are links built by `sort_link` (a custom tag in
+  templatetags/crm.py): click once for A-Z, again for Z-A. The view only takes
+  sort keys from a fixed allowlist, so a hand-typed `?sort=` can't order rows by
+  a column you shouldn't see. Export CSV reuses the current query string, so it
+  exports exactly the filtered rows on screen.
+
+  New and Import only show when `can_create` is true. That's tidiness; the
+  views refuse a Viewer on their own.
+{% endcomment %}
+{% load crm %}
+{% block title %}Companies{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Companies</h1>
+  <div class="actions"><a class="btn btn-secondary" href="?{% if querystring %}{{ querystring }}&amp;{% endif %}export=1">Export CSV</a>{% if can_create %}<a class="btn btn-secondary" href="{% url 'import_wizard' %}">Import CSV</a>{% endif %}{% if can_create %}<a class="btn" href="{% url 'company_create' %}">New company</a>{% endif %}</div></div>
+<div class="panel">
+  {% include "core/partials/filters.html" %}
+  <div class="table-wrap"><table class="data">
+    <thead><tr>
+      <th><a href="{% sort_link sort_base current_sort 'name' %}">Name {% sort_arrow current_sort 'name' %}</a></th>
+      <th>Domain</th>
+      <th><a href="{% sort_link sort_base current_sort 'lifecycle' %}">Lifecycle {% sort_arrow current_sort 'lifecycle' %}</a></th>
+      <th><a href="{% sort_link sort_base current_sort 'owner' %}">Owner {% sort_arrow current_sort 'owner' %}</a></th>
+      <th>Tags</th>
+      <th><a href="{% sort_link sort_base current_sort 'updated' %}">Updated {% sort_arrow current_sort 'updated' %}</a></th>
+    </tr></thead>
+    <tbody>
+    {% for c in object_list %}
+      <tr><td><a href="{{ c.get_absolute_url }}">{{ c.name }}</a></td><td>{{ c.domain }}</td>
+        <td><span class="pill">{{ c.get_lifecycle_display }}</span></td><td>{{ c.owner|default:"—" }}</td>
+        <td>{% for t in c.tags.all %}<span class="pill tag">{{ t }}</span> {% endfor %}</td>
+        <td>{{ c.updated_at|date:"M j, Y" }}</td></tr>
+    {% empty %}<tr><td colspan="6" class="empty">No companies match.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+  {% include "core/partials/pagination.html" %}
+</div>
+{% endblock %}

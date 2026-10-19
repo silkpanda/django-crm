@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% comment %}
+  import_preview.html — Step 3 of the CSV import wizard.
+
+  TEACHING NOTE: this template shows the first 20 rows with their verdicts
+  (new/update/skip). The user can see exactly what will happen before committing.
+  If the mapping is wrong, they can go back and adjust it.
+{% endcomment %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Import CSV</h1>
+  <p class="muted">Preview the first 20 rows before committing.</p>
+</div>
+
+<div class="card">
+  <h2>Step 3: Preview</h2>
+  <p class="muted">File: {{ csv_name }} | Type: {{ import_type|title }}</p>
+
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Row</th>
+        <th>Verdict</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="verdict-{{ row.verdict }}">
+        <td>{{ row.row_number }}</td>
+        <td>
+          <span class="badge badge-{{ row.verdict }}">
+            {{ row.verdict|upper }}
+          </span>
+        </td>
+        <td>
+          {% if row.errors %}
+            {% for err in row.errors %}
+            <span class="text-error">{{ err }}</span>
+            {% endfor %}
+          {% else %}
+            {% for col, val in row.data.items %}
+            <div><strong>{{ col }}:</strong> {{ val }}</div>
+            {% endfor %}
+          {% endif %}
+        </td>
+      </tr>
+      {% empty %}
+      <tr>
+        <td colspan="3" class="muted">No rows to preview.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div class="form-actions">
+    <a href="{% url 'import_wizard_map' %}" class="btn btn-secondary">Back</a>
+    <form method="post" action="{% url 'import_wizard_commit' %}" style="display:inline">
+      {% csrf_token %}
+      <button type="submit" class="btn btn-primary">Commit Import</button>
+    </form>
+  </div>
+</div>
+{% endblock %}

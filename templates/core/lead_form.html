@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% comment %}
+  lead_form.html: the desk form — "somebody called, write this down".
+
+  TEACHING NOTE: it is nearly templates/core/form.html, and deliberately not a
+  {% include %} of it. That shared form renders whatever fields it is handed,
+  including the ones a Rep may not touch, and its page furniture is built around
+  a record that already exists. A lead has no record yet and its whole point is
+  that ANY signed-in user may fill it in — including a Viewer, who cannot open
+  core/form.html at all. Same styling, different rule, so its own template.
+
+  The layout still comes from core/partials/field.html, so a field looks
+  identical here, on a company and on a deal. `message` spans both columns
+  because it is the one field people write a paragraph into.
+
+  TEACHING NOTE: the `<datalist>` below the grid is the Company box's list of
+  names that already exist. It ships EMPTY, and the six `hx-*`/`list` attrs that
+  point the input at it live on the widget in core/forms_leads.py, not here — so
+  this template renders a datalist that has nothing to do with suggestions and
+  the feature is one edit to the form. Filling it is HTMX's job and nobody's
+  else's: as somebody types, `hx-get` asks core/views_leads.py
+  `company_suggestions` for matching names and drops them into this element
+  (`hx-swap="innerHTML"` rewrites its children and leaves the tag alone).
+
+  The reason it exists at all is a data-quality bug, not a convenience one.
+  `leads._match_or_create_company` matches the company on `name__iexact`, so a
+  tech typing "Lakeside Dentl" creates a SECOND company that reads identically
+  in /companies/ and splits the account's history in half. A suggestion they
+  click hands back the stored spelling exactly, so the two paths cannot disagree.
+  The empty first render is intentional too — an empty datalist is what a person
+  sees before they have typed two characters, and the browser shows nothing for
+  it either way.
+{% endcomment %}
+{% block title %}New lead{% endblock %}
+{% block content %}
+<div class="page-head">
+  <h1>New lead</h1>
+  <p class="sub">Any role can log one. It lands in the Leads queue unowned until a Rep picks it up or an Admin assigns it.</p>
+</div>
+<div class="panel"><div class="panel-body">
+<form method="post" novalidate>{% csrf_token %}
+  {% if form.non_field_errors %}<ul class="errorlist">{% for e in form.non_field_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <div class="form-grid">
+  {% for field in form %}
+    {% if field.name == "message" %}{% include "core/partials/field.html" with wide=True %}
+    {% else %}{% include "core/partials/field.html" %}{% endif %}
+  {% endfor %}
+  </div>
+  <datalist id="company-options"></datalist>
+  <div class="actions">
+    <button class="btn" type="submit">Log lead</button>
+    <a class="btn btn-secondary" href="javascript:history.back()">Cancel</a>
+  </div>
+</form>
+</div></div>
+{% endblock %}

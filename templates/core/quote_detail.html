@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% comment %}
+  quote_detail.html: one quote, its lines, and the total.
+
+  TEACHING NOTE — the total printed here is `{{ total }}`, computed in the view by
+  core.quotes.quote_total from the lines in the database. It is not a stored field
+  and it is not arithmetic done in this template, for the reason the quotes.py
+  module note gives at length: a stored total is a second answer to a question
+  that can be answered exactly, and it goes stale the moment a line is edited
+  anywhere else. Summing the `rows` in this template would at least be
+  self-consistent today — and would also be untestable, and would need the
+  per-line amounts rounded before it added them, which is not the same total.
+
+  Neither does any row here multiply through the `multiply` filter. Django's
+  `multiply` opens with `int(value) * int(arg)`, and `int(Decimal("0.25"))` is 0,
+  so a quarter hour of labour renders as $0.00 — quietly, on every fractional
+  line. The amount is computed in Python and arrives as `row.amount`.
+
+  The expired marker deliberately does NOT change the number. A quote that lapsed
+  on the 30th still priced those laptops at $2,400; nobody has re-priced anything
+  because the calendar moved. The page says the date has passed and leaves the
+  arithmetic alone.
+
+  The status buttons are POST forms, not links, because a link cannot change
+  anything on the server and a quote's status is not a GET parameter. Only the
+  moves `set_status` allows are offered — the view refuses the rest with a
+  message, so offering every combination would be offering buttons that lie.
+
+  Editing is offered even on an accepted quote, because the editor itself decides:
+  it redirects with an explanation. Hiding it here would be a second copy of that
+  rule, and the two would drift — the template would say the lines are editable
+  while the view refused, or the reverse.
+{% endcomment %}
+{% load humanize %}
+{% block title %}Quote — {{ deal.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Quote</h1>
+    <div class="sub">
+      <a href="{{ deal.get_absolute_url }}">{{ deal.name }}</a> ·
+      <span class="pill">{{ quote.get_status_display }}</span>
+      {% if expired %}<span class="pill stage-lost">Expired</span>{% endif %}
+    </div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{% url 'deal_detail' deal.pk %}">Deal</a>
+    {% if can_edit %}<a class="btn" href="{% url 'quote_edit' deal.pk %}">Edit lines</a>{% endif %}
+  </div>
+</div>
+<div class="detail-grid">
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Line items</h2></div>
+      <div class="panel-body flush">
+        <div class="table-wrap">
+          <table class="data">
+            <thead><tr><th>Description</th><th class="num">Qty</th><th class="num">Unit price</th><th class="num">Amount</th></tr></thead>
+            <tbody>
+              {% for row in rows %}
+              <tr>
+                <td>{{ row.line.description }}</td>
+                <td class="num">{{ row.line.quantity|floatformat:2 }}</td>
+                <td class="num">${{ row.line.unit_price|floatformat:2|intcomma }}</td>
+                <td class="num">${{ row.amount|floatformat:2|intcomma }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="empty">No line items. This quote is worth nothing.</td></tr>
+              {% endfor %}
+            </tbody>
+            <tfoot>
+              <tr><th colspan="3">Total</th><th class="num">${{ total|floatformat:2|intcomma }}</th></tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </section>
+    {% if quote.notes %}
+    <section class="panel">
+      <div class="panel-head"><h2>Notes</h2></div>
+      <div class="panel-body"><p class="prewrap">{{ quote.notes }}</p></div>
+    </section>
+    {% endif %}
+  </div>
+  <div>
+    <section class="panel">
+      <div class="panel-head"><h2>Quote</h2></div>
+      <div class="panel-body"><dl class="facts">
+        <dt>Status</dt><dd>{{ quote.get_status_display }}</dd>
+        <dt>Valid until</dt><dd>{{ quote.valid_until|date:"M j, Y"|default:"No expiry" }}</dd>
+        <dt>Deal owner</dt><dd>{{ deal.owner|default:"—" }}</dd>
+        <dt>Last saved</dt><dd>{{ quote.updated_at|timesince }} ago</dd>
+      </dl></div>
+    </section>
+    {% if can_edit %}
+    <section class="panel">
+      <div class="panel-head"><h2>Change status</h2></div>
+      <div class="panel-body">
+        {% if locked %}
+          <p>{{ locked_message }}</p>
+        {% else %}
+          <div class="actions">
+            {% for next_status, label in next_statuses %}
+            <form method="post" action="{% url 'quote_status' deal.pk %}">
+              {% csrf_token %}
+              <input type="hidden" name="status" value="{{ next_status }}">
+              <button class="btn btn-secondary" type="submit">{{ label }}</button>
+            </form>
+            {% empty %}
+            <p>Nothing to change from here.</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

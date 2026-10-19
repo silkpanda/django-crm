@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% comment %}
+  quote_form.html: the line editor — every line of the quote, on one page.
+
+  TEACHING NOTE — it is nearly templates/core/form.html and deliberately not an
+  {% include %} of it. That shared form renders whatever single-record fields it is
+  handed; this page has TWO kinds of thing, and they do not go in the same place.
+  valid_until and notes are the quote's own and sit at the top like any other
+  record. The lines are a formset: an unknown-at-write-time number of rows, each
+  of which is its own little form with its own fields, its own validation and its
+  own DELETE checkbox. `{{ form }}` cannot render that, and an attempt to loop a
+  formset through it produces one form per line — which the browser then submits
+  as several POSTs, so half the quote saves and the other half does not.
+
+  The layout comes from core/partials/field.html, so a line's inputs look exactly
+  like a company's. `description` is `wide` because it is the field people type
+  into; quantity and unit price sit side by side underneath, which `.form-grid`
+  gives for free at two columns.
+
+  {{ formset.management_form }} is not optional. It carries the TOTAL_FORMS count
+  and each row's index, and Django's formset reads them to know how many rows came
+  back. Leave it out and every submission is an empty formset with a validation
+  error about it, which is a genuinely baffling first hour.
+
+  The DELETE checkbox appears ONLY on rows that exist. It is not hidden by CSS or
+  disabled — on a blank row there is nothing to delete, and a checkbox that offers
+  to remove a line the database has never heard of is a small lie about what the
+  form does.
+
+  The <template> at the bottom is the row blueprint for the "Add line" button that
+  this workstream does not build. It is rendered, it is inert, and it costs
+  nothing: `empty_form`'s field names are all `__prefix__-something`, which is
+  exactly what an endpoint would swap for a real index before returning it as an
+  HTMX fragment. See the follow-up note at the top of core/forms_quotes.py.
+
+  Each fieldset is labelled with its row's number, which is the `position` that row
+  will be saved at — the formset's existing rows come first and are numbered from
+  1, so the legend and the stored order are the same number. Labelling the blank
+  rows "new line 3" instead would be a second, competing numbering that disagrees
+  with the stored one the moment a blank row is left empty.
+
+  `total` is the SAVED total, from the lines already in the database. Rows being
+  typed into are not line items yet, so it is labelled as what it is rather than
+  presented as a live preview that does not update as you type.
+{% endcomment %}
+{% load humanize %}
+{% block title %}Quote — {{ deal.name }}{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1>Quote for {{ deal.name }}</h1>
+    <div class="sub"><span class="pill">{{ quote.get_status_display }}</span> · saved total ${{ total|floatformat:2|intcomma }}</div>
+  </div>
+  <div class="actions">
+    <a class="btn btn-secondary" href="{% url 'quote_detail' deal.pk %}">Cancel</a>
+  </div>
+</div>
+<form method="post" novalidate>{% csrf_token %}
+  {{ formset.management_form }}
+  {% if formset.non_form_errors %}<ul class="errorlist">{% for e in formset.non_form_errors %}<li>{{ e }}</li>{% endfor %}</ul>{% endif %}
+  <section class="panel">
+    <div class="panel-head"><h2>Quote details</h2></div>
+    <div class="panel-body">
+      <div class="form-grid">
+        {% for field in quote_form %}{% include "core/partials/field.html" %}{% endfor %}
+      </div>
+    </div>
+  </section>
+  <section class="panel">
+    <div class="panel-head"><h2>Line items</h2></div>
+    <div class="panel-body">
+      {% for line_form in formset %}
+      <fieldset>
+        <legend>Line {{ forloop.counter }}</legend>
+        {# The row's own pk, rendered explicitly: field.html loops VISIBLE fields. #}
+        {{ line_form.id }}
+        <div class="form-grid">
+          {% include "core/partials/field.html" with field=line_form.description wide=True %}
+          {% include "core/partials/field.html" with field=line_form.quantity %}
+          {% include "core/partials/field.html" with field=line_form.unit_price %}
+          {% if line_form.instance.pk %}
+            {% include "core/partials/field.html" with field=line_form.DELETE %}
+          {% endif %}
+        </div>
+      </fieldset>
+      {% endfor %}
+      <template id="quote-line-template">{{ formset.empty_form }}</template>
+    </div>
+  </section>
+  <div class="actions">
+    <button class="btn" type="submit">Save quote</button>
+    <a class="btn btn-secondary" href="{% url 'quote_detail' deal.pk %}">Cancel</a>
+  </div>
+</form>
+{% endblock %}

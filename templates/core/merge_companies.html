@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% comment %}
+  merge_companies.html — Admin picks which company survives a merge.
+
+  TEACHING NOTE: this template shows the current company and a list of potential
+  duplicates. The admin picks which one survives, and all child records (contacts,
+  deals, activities, tasks) are re-pointed to the survivor. The loser is deleted.
+{% endcomment %}
+
+{% block title %}Merge Companies{% endblock %}
+
+{% block content %}
+<div class="page-header">
+  <h1>Merge Companies</h1>
+  <p class="muted">Choose which company survives. All contacts, deals, activities, and tasks will be moved to the survivor.</p>
+</div>
+
+<div class="card">
+  <h2>Current Company</h2>
+  <p><strong>{{ company.name }}</strong></p>
+  <p class="muted">{{ company.domain|default:"No domain" }} | {{ company.get_lifecycle_display }}</p>
+</div>
+
+{% if duplicates %}
+<div class="card">
+  <h2>Potential Duplicates</h2>
+  <form method="post">
+    {% csrf_token %}
+    <input type="hidden" name="loser_id" value="{{ company.pk }}">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Survive?</th>
+          <th>Name</th>
+          <th>Domain</th>
+          <th>Lifecycle</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for dup in duplicates %}
+        <tr>
+          <td><input type="radio" name="survivor_id" value="{{ dup.pk }}" required></td>
+          <td><a href="{{ dup.get_absolute_url }}">{{ dup.name }}</a></td>
+          <td>{{ dup.domain|default:"—" }}</td>
+          <td>{{ dup.get_lifecycle_display }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    <div class="form-actions">
+      <a href="{{ company.get_absolute_url }}" class="btn btn-secondary">Cancel</a>
+      <button type="submit" class="btn btn-danger">Merge</button>
+    </div>
+  </form>
+</div>
+{% else %}
+<div class="card">
+  <p class="muted">No potential duplicates found for this company.</p>
+  <a href="{{ company.get_absolute_url }}" class="btn btn-secondary">Back</a>
+</div>
+{% endif %}
+{% endblock %}

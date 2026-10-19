@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% comment %}
+  user_list.html: Settings -> Users. Admin only (the view enforces it).
+
+  Deactivate is a POST form, not a link: a GET that changes state can be fired by
+  anything that loads the URL, like a prefetcher or an <img> tag on another page.
+  You can't deactivate yourself, so your own row has no button.
+{% endcomment %}
+{% block title %}Users{% endblock %}
+{% block content %}
+<div class="page-head"><h1>Users</h1>
+  <div class="actions"><a class="btn" href="{% url 'user_create' %}">New user</a></div></div>
+<div class="panel">
+  <div class="table-wrap"><table class="data">
+    <thead><tr><th>Username</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last login</th><th></th></tr></thead>
+    <tbody>
+    {% for u in users %}
+      <tr>
+        <td><a href="{% url 'user_update' u.pk %}">{{ u.username }}</a></td>
+        <td>{{ u.get_full_name|default:"—" }}</td>
+        <td>{{ u.email|default:"—" }}</td>
+        <td><span class="pill">{{ u.shown_role }}</span></td>
+        <td>{% if u.is_active %}Active{% else %}<span class="pill">Inactive</span>{% endif %}</td>
+        <td>{{ u.last_login|date:"M j, Y"|default:"Never" }}</td>
+        <td>{% if u.pk != user.pk %}
+          <form method="post" action="{% url 'user_toggle_active' u.pk %}">{% csrf_token %}
+            <button class="btn btn-sm {% if u.is_active %}btn-danger{% else %}btn-secondary{% endif %}" type="submit">{% if u.is_active %}Deactivate{% else %}Reactivate{% endif %}</button>
+          </form>{% endif %}</td>
+      </tr>
+    {% empty %}<tr><td colspan="7" class="empty">No users.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+{% endblock %}

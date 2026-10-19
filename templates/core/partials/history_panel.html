@@ -1,0 +1,19 @@
+{% comment %}
+  history_panel.html: the History tab, every change to this record, newest first.
+
+  TEACHING NOTE: the rows come from django-simple-history, which saves a full
+  copy of the record on every save along with who did it. core/history.py
+  compares each copy with the one before and hands this template only the
+  fields that changed, shown as old (struck through) and new. "system" means no
+  signed-in user made the change: an import, a management command, or the seed.
+{% endcomment %}
+<div id="panel-history" role="tabpanel" hidden>
+  {% for h in history %}
+  <div class="history-entry">
+    <div class="meta" style="font-size:13px;color:var(--muted)">{{ h.when|date:"M j, Y g:i A" }} · {% if h.who %}{{ h.who.get_full_name|default:h.who.username }}{% else %}system{% endif %} · {{ h.type }}</div>
+    {% if h.changes %}
+    <ul>{% for c in h.changes %}<li><strong>{{ c.field }}</strong>: <del>{{ c.old }}</del> → <ins>{{ c.new }}</ins></li>{% endfor %}</ul>
+    {% endif %}
+  </div>
+  {% empty %}<div class="empty">No history yet.</div>{% endfor %}
+</div>

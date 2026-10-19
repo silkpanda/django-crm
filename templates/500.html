@@ -1,0 +1,15 @@
+{% comment %}
+  500.html: "the server hit an error." Deliberately standalone.
+
+  TEACHING NOTE: this is the one page that does NOT extend base.html, and it
+  loads no stylesheet and no template tags. When Django renders a 500 it gives
+  this template an empty context (no user, no request), and the thing that just
+  broke might be base.html itself, the database, or a template tag. An error
+  page that needs any of those can crash while reporting the crash. So the
+  styles are inline and the colours are hard-coded copies of the brand tokens.
+  Keep it that way.
+{% endcomment %}
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Server error</title>
+<style>body{margin:0;font-family:Roboto,Arial,sans-serif;background:#1e293b;color:#405363;display:grid;place-items:center;min-height:100vh;padding:16px}
+.card{background:#fff;border-top:4px solid #dc2626;padding:32px;max-width:420px}h1{font-family:"Roboto Slab",Georgia,serif;color:#141617;margin:0 0 12px}</style></head>
+<body><div class="card"><h1>Something broke</h1><p>The error was logged. Try again, and if it keeps happening, tell an Admin what you were doing.</p><p><a href="/" style="color:#0f766e">Back to the dashboard</a></p></div></body></html>

@@ -1,0 +1,43 @@
+{% comment %}
+  The activity timeline + its "log something" form.
+
+  TEACHING NOTE — HOW HTMX WORKS, in three attributes on the form below:
+    hx-post   "when submitted, POST to this URL with AJAX instead of a full reload."
+    hx-target "#timeline" — put whatever HTML the server returns into the element
+              with id=timeline.
+    hx-swap   "innerHTML" — replace that element's CONTENTS with what came back.
+  The form ALSO sets method/action the normal way: with JavaScript off it still
+  works as a plain form post. That's "progressive enhancement" — fast when JS is
+  on, functional when it isn't.
+
+  QA-02: hx-swap used to be "afterbegin", which inserted each new entry at the
+  TOP of the timeline. That's the browser overriding the server's date sort, so a
+  call logged today but dated last week sat above today's note until you reloaded.
+  The server now returns the whole sorted timeline (see activity_create), and
+  innerHTML puts it there — the order the entries are in IS the order the database
+  said they were in.
+
+  QA-01: there is no "Nothing logged yet" element here, and there never should
+  be. As a node it could only be removed (app.js did that on the first add) and
+  never restored, so deleting the last entry left a blank box. It's now a CSS
+  :has() rule on #timeline, which is computed fresh every time the list changes.
+{% endcomment %}
+<div id="panel-timeline" role="tabpanel">
+  {% if can_log_activity %}
+  <form class="activity-form" method="post" action="{% url 'activity_create' activity_target.0 activity_target.1 %}"
+        hx-post="{% url 'activity_create' activity_target.0 activity_target.1 %}" hx-target="#timeline" hx-swap="innerHTML">
+    {% csrf_token %}  {# renders the hidden CSRF token field Django's POST check requires #}
+    <div class="row">
+      <div class="field">{{ activity_form.kind.label_tag }}{{ activity_form.kind }}</div>
+      <div class="field">{{ activity_form.occurred_at.label_tag }}{{ activity_form.occurred_at }}</div>
+    </div>
+    <div class="field">{{ activity_form.body }}</div>
+    <div class="form-errors" id="activity-form-errors"></div>
+    <button class="btn btn-sm" type="submit">Log it</button>
+  </form>
+  {% endif %}
+  {% comment %}The same partial the HTMX swap returns, so an entry can't look one way on a
+     fresh page load and another way after a swap. ({# #} is single-line only: a
+     multi-line one renders as page text.){% endcomment %}
+  <ul class="timeline" id="timeline">{% include "core/partials/timeline_items.html" %}</ul>
+</div>

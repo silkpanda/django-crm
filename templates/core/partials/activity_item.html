@@ -1,0 +1,35 @@
+{% comment %}
+  activity_item.html: one timeline entry (a note, call, meeting or email).
+
+  TEACHING NOTE: the Remove form has both `hx-post` and a plain
+  `method`/`action`. With JavaScript, HTMX posts it and swaps just this entry
+  out of the page; without JavaScript, it still works as an ordinary POST.
+  `deletable_by` (a custom filter in templatetags/crm.py) calls the same
+  `can_delete` the delete view checks, so the button only appears when the
+  request would succeed.
+
+  SECURITY NOTE: the body is autoescaped. Django turns `<` into `&lt;` on the
+  way out, so text that looks like HTML shows as text instead of running. An
+  activity body is user text, so it can contain literal `<script>` — NEVER add
+  `|safe` to the body. ActivityBodyAutoescapeTests in core/tests/test_views.py
+  exists to catch exactly that change.
+{% endcomment %}
+{% load crm %}
+<li id="activity-{{ a.pk }}"{% if new %} class="new"{% endif %}>
+  <div class="meta">
+    <span class="kind kind-{{ a.kind }}">{{ a.get_kind_display }}</span>
+    <span>{{ a.occurred_at|date:"M j, Y g:i A" }}</span>
+    <span>· {% if a.author %}{{ a.author.get_full_name|default:a.author.username }}{% else %}system{% endif %}</span>
+    {% if show_links %}
+      {% if a.deal %}<span>· <a href="{{ a.deal.get_absolute_url }}">{{ a.deal }}</a></span>
+      {% elif a.contact %}<span>· <a href="{{ a.contact.get_absolute_url }}">{{ a.contact }}</a></span>{% endif %}
+    {% endif %}
+    {% if a|deletable_by:request.user %}
+    <form hx-post="{% url 'activity_delete' a.pk %}" hx-target="#activity-{{ a.pk }}" hx-swap="outerHTML" hx-confirm="Remove this entry?"
+          method="post" action="{% url 'activity_delete' a.pk %}">{% csrf_token %}
+      <button class="btn-link" type="submit" style="font-size:13px">Remove</button>
+    </form>
+    {% endif %}
+  </div>
+  <div class="prewrap">{{ a.body }}</div>
+</li>
