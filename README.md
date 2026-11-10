@@ -4,7 +4,7 @@ A small internal CRM: companies, contacts, deals with a sales pipeline, an
 activity timeline, tasks, a dashboard, CSV/SQL import, lead intake, quotes,
 notifications, reports and a read-only JSON API. Django 5 + SQLite, in a branded shell.
 
-Built in phases, each gated by tests **and** an active security pass.
+Built with Claude Code. I set the process: every phase had to pass its test suite **and** an active security pass, and each security probe had to fail against the unfixed build before its fix counted.
 
 ## Status
 - **Phase 1 — Foundation & records:** DONE. Auth + roles, companies/contacts/deals
