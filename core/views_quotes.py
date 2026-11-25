@@ -213,7 +213,11 @@ class QuoteEditView(LoginRequiredMixin, View):
         """
         with transaction.atomic():
             for form in formset.deleted_forms:
-                form.instance.delete()
+                # A ticked blank extra row was never saved, so there is nothing
+                # to delete — and `.delete()` on an unsaved instance raises.
+                # Django's own `delete_existing` skips these the same way.
+                if form.instance.pk is not None:
+                    form.instance.delete()
             for position, form in enumerate(live_line_forms(formset), start=1):
                 line = form.save(commit=False)
                 line.position = position

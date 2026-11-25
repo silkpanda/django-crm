@@ -313,7 +313,13 @@ class ImportEngine:
         TEACHING NOTE: this is called by both preview() and run(). The only
         difference is `save`: the preview does every check the commit does,
         then stops short of writing.
+
+        A row the source already flagged (a CSV row with cells past the last
+        header) arrives with its reason in `row.errors` and is skipped as-is.
         """
+        if row.errors:
+            row.verdict = Verdict.SKIP
+            return
         try:
             existing = self._match(row.data)
         except RowError as e:

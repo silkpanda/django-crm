@@ -12,6 +12,7 @@ depending on the current user's role.
 """
 
 from django import forms
+from django.db.models import Q
 from django.utils import timezone
 from django.contrib.auth import get_user_model
 
@@ -27,6 +28,17 @@ User = get_user_model()
 # instead of a plain text box — free UI with one attribute.
 DATE = forms.DateInput(attrs={"type": "date"})
 DATETIME = forms.DateTimeInput(attrs={"type": "datetime-local"}, format="%Y-%m-%dT%H:%M")
+
+
+def _active_or_current(current_pk):
+    """
+    Active users, plus whoever holds the record now even if since deactivated.
+
+    Without the second half, a record owned by a deactivated user has no matching
+    option, the browser submits a blank, and any Admin edit clears the owner.
+    Other inactive users stay out, so nobody can be newly handed a record.
+    """
+    return User.objects.filter(Q(is_active=True) | Q(pk=current_pk)).order_by("username")
 
 
 class OwnerFieldMixin:
@@ -54,7 +66,7 @@ class OwnerFieldMixin:
         self.user = user
         if "owner" in self.fields:
             if user is not None and is_admin(user):
-                self.fields["owner"].queryset = User.objects.filter(is_active=True).order_by("username")
+                self.fields["owner"].queryset = _active_or_current(self.instance.owner_id)
             else:
                 del self.fields["owner"]  # Reps/Viewers never get an owner picker
 
@@ -103,6 +115,14 @@ class ContactForm(OwnerFieldMixin, forms.ModelForm):
             "roles": forms.CheckboxSelectMultiple,
         }
 
+    def clean_email(self):
+        # Contact.save lowercases the email, so the unique check has to see it
+        # lowercased too. Checked as typed, `Pat@Acme.example` slipped past an
+        # existing `pat@acme.example` and the save died on the constraint (a 500).
+        # A blank stays exactly as the field gave it (None), and save makes it NULL.
+        email = self.cleaned_data.get("email")
+        return email.strip().lower() if email else email
+
 
 class DealForm(OwnerFieldMixin, forms.ModelForm):
     """
@@ -130,6 +150,10 @@ class DealForm(OwnerFieldMixin, forms.ModelForm):
             self.add_error("primary_contact", "That contact belongs to a different company.")
         if data.get("stage") == Stage.LOST and not (data.get("lost_reason") or "").strip():
             self.add_error("lost_reason", "Give a reason when marking a deal Lost.")
+        elif data.get("stage") != Stage.LOST:
+            # PIPE-8, same rule as the board's stage move: a deal back in the
+            # pipeline has no reason for having been lost.
+            data["lost_reason"] = ""
         return data
 
 
@@ -179,7 +203,7 @@ class TaskForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.user = user
         if user is not None and is_admin(user):
-            self.fields["assignee"].queryset = User.objects.filter(is_active=True).order_by("username")
+            self.fields["assignee"].queryset = _active_or_current(self.instance.assignee_id)
         else:
             # Deleted, not hidden: a hand-POSTed assignee is ignored because the
             # form no longer has a field to read it into (probe 2.5 checks this).
