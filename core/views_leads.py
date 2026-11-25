@@ -103,10 +103,19 @@ def _rate_limited(ip):
     of simultaneous POSTs can slip one or two past the count. A limiter that
     must not is a row in a table with a lock on it, which is more than a
     contact form needs.
+
+    The key used to hold the old counter, an integer, and a cache row outlives
+    the deploy that changed its meaning. Anything that is not a list is read as
+    "no POSTs yet" instead of looped over: the address loses a count that was
+    wrong anyway, and the public form does not answer 500 to whoever posted
+    just before the new code went live.
     """
     key = f"lead-submit:{ip}"
     now = time.time()
-    recent = [t for t in cache.get(key, []) if t > now - LEAD_RATE_TIMEOUT]
+    stored = cache.get(key)
+    if not isinstance(stored, list):
+        stored = []
+    recent = [t for t in stored if t > now - LEAD_RATE_TIMEOUT]
     if len(recent) <= LEAD_RATE_LIMIT:
         recent.append(now)
         cache.set(key, recent, LEAD_RATE_TIMEOUT)
@@ -426,10 +435,11 @@ def lead_assign(request, pk):
     "who are you?") rather than told the endpoint only accepts POSTs (405,
     "this exists"). Answering 405 to a stranger is free reconnaissance.
 
-    Assignment and its task are created together, but only the task genuinely
-    needs the transaction — the deal's owner and the reminder to act on it are
-    one act, and a deal assigned with no task is a lead that silently never
-    gets called. The task itself comes from `leads.create_lead_task`, the same
+    Assignment and its task are created in one transaction — the deal's owner
+    and the reminder to act on it are one act, and a deal assigned with no task
+    is a lead that silently never gets called. The assignment is a conditional
+    UPDATE inside that transaction, and the task is made only when the UPDATE
+    took the lead. The task itself comes from `leads.create_lead_task`, the same
     one `lead_claim` uses, because the two routes differ in WHO gets the lead and
     not in what the new owner is handed.
 
