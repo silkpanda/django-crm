@@ -47,6 +47,8 @@ about a human submitting one lead an hour; the field allowlist does nothing
 about a bot at all. Defence in depth means each of them has a job.
 """
 
+import time
+
 from django.contrib import messages
 from django.contrib.auth.decorators import login_not_required, login_required
 from django.core.cache import cache
@@ -83,25 +85,32 @@ def _rate_limited(ip):
     """
     Count this POST against `ip` and say whether it is over the limit.
 
-    TEACHING NOTE — `cache.add` first, then `cache.incr`. `incr` on a key that
-    does not exist raises, because incrementing nothing is a bug rather than a
-    zero; `add` is the atomic "create it at 1 if it isn't there" that decides
-    which of two simultaneous first-requests owns the key. The `except ValueError`
-    covers the window where the key expires between the two calls, which is the
-    one race a per-hour limiter actually has.
+    TEACHING NOTE — the value is a short list of POST times, not a counter, and
+    that is because of the backend. `cache.add` then `cache.incr` is the usual
+    shape, but `DatabaseCache` has no `incr` of its own: it inherits
+    `BaseCache.incr`, which is a `get` followed by `set(key, value)` with the
+    cache's DEFAULT timeout (300 seconds). So the second POST swapped the
+    one-hour expiry for a five-minute one, and a bot sending five every five
+    minutes was never limited at all.
 
-    `timeout` goes on the `add` only: that sets the window, and re-setting it on
-    every increment would make the hour restart on every POST, so a client
-    posting steadily would never be limited at all.
+    Keeping the times makes the window independent of when the cache row
+    expires: a POST counts for exactly an hour after it was made, whatever the
+    backend does to the key's lifetime, and every write names its own timeout.
+    The list stops growing one past the limit, so a client that hammers the form
+    cannot make the row bigger by doing it.
+
+    Like the `incr` it replaces, this is a read followed by a write, so a burst
+    of simultaneous POSTs can slip one or two past the count. A limiter that
+    must not is a row in a table with a lock on it, which is more than a
+    contact form needs.
     """
     key = f"lead-submit:{ip}"
-    if cache.add(key, 1, LEAD_RATE_TIMEOUT):
-        return 1
-    try:
-        return cache.incr(key)
-    except ValueError:
-        cache.set(key, 1, LEAD_RATE_TIMEOUT)
-        return 1
+    now = time.time()
+    recent = [t for t in cache.get(key, []) if t > now - LEAD_RATE_TIMEOUT]
+    if len(recent) <= LEAD_RATE_LIMIT:
+        recent.append(now)
+        cache.set(key, recent, LEAD_RATE_TIMEOUT)
+    return len(recent)
 
 
 def _lead_kwargs(form, team_name, submitted_by):
@@ -456,9 +465,27 @@ def lead_assign(request, pk):
         )
 
     owner = form.cleaned_data["owner"]
-    deal.owner = owner
-    deal.save(update_fields=["owner", "updated_at"])
-    create_lead_task(deal, owner)
+
+    # The same conditional UPDATE as `lead_claim`, for the same reason: the
+    # Admin's queue page can be stale too. Loading the deal and saving over it
+    # took a lead off the Rep who had just picked it up (and left them holding
+    # its to-do), handed out deals that were already won or lost, and made two
+    # tasks out of a double-click.
+    with transaction.atomic():
+        assigned = Deal.objects.filter(
+            pk=pk, owner__isnull=True, stage=Stage.LEAD
+        ).update(owner=owner, updated_at=timezone.now())
+
+        if assigned == 1:
+            deal.refresh_from_db()
+            # `update()` writes no history row; this save records who and when.
+            deal.save(update_fields=["owner", "updated_at"])
+            create_lead_task(deal, owner)
+
+    if assigned != 1:
+        messages.error(request, "That lead has already been picked up, or is no longer a new lead.")
+        return redirect("lead_queue")
+
     lead_assigned(deal, owner)
     messages.success(request, f"{deal.company} assigned to {owner.get_full_name() or owner.username}.")
     return redirect("lead_queue")

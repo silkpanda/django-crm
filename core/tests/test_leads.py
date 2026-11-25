@@ -106,7 +106,8 @@ file with `.venv/Scripts/python.exe manage.py test core.tests.test_leads`.
 """
 
 import re
-from datetime import timedelta
+from datetime import datetime, timedelta
+from datetime import timezone as dt_timezone
 from decimal import Decimal
 
 from django.core.cache import cache
@@ -1469,3 +1470,111 @@ class LeadQueueTeamColumnTests(TestCase):
             msg=f"the queue ran {one_row} queries with one row and {three_rows} with three: "
             "every extra row is a missing select_related",
         )
+
+
+# ------------------------------------------------- the hour really is an hour
+
+
+class LeadRateWindowTests(TestCase):
+    """
+    The limiter's window, as opposed to its count.
+
+    TEACHING NOTE — `test_the_sixth_post_from_one_ip_in_an_hour_is_refused` sends
+    six POSTs inside a second, so it proves the COUNT and says nothing about how
+    long the count is remembered. `DatabaseCache` has no `incr` of its own: it
+    inherits `BaseCache.incr`, which is `get` then `set(key, value)` with the
+    cache's DEFAULT timeout (300 s here). So the second POST quietly swapped the
+    one-hour expiry for a five-minute one, and a bot sending five every five
+    minutes was never limited. Waiting an hour in a test is not an option, so
+    this reads the expiry the cache actually stored.
+    """
+
+    def setUp(self):
+        cache.clear()
+
+    def _counter_expiry(self):
+        with connection.cursor() as cursor:
+            cursor.execute("SELECT cache_key, expires FROM crm_cache")
+            rows = [row for row in cursor.fetchall() if "lead-submit" in row[0]]
+        self.assertEqual(len(rows), 1, msg=f"expected one rate-limit row, found {rows}")
+        expires = rows[0][1]
+        if isinstance(expires, str):
+            expires = datetime.fromisoformat(expires)
+        if timezone.is_naive(expires):
+            # DatabaseCache stores UTC with the tzinfo stripped.
+            expires = expires.replace(tzinfo=dt_timezone.utc)
+        return expires
+
+    def test_a_second_post_does_not_shorten_the_window(self):
+        ip = "203.0.113.20"
+        for n in range(2):
+            response = self.client.post(
+                reverse("lead_submit"),
+                public_payload(company_name=f"Harbor Optical {n}"),
+                REMOTE_ADDR=ip,
+            )
+            self.assertEqual(response.status_code, 302)
+
+        remaining = self._counter_expiry() - timezone.now()
+        self.assertGreater(
+            remaining,
+            timedelta(minutes=55),
+            msg=f"after two POSTs the counter expires in {remaining}; the limit is per HOUR",
+        )
+
+
+# ------------------------------------------- assigning what is not assignable
+
+
+class LeadAssignConditionTests(TestCase):
+    """
+    `lead_assign` has to be as careful as `lead_claim` about WHAT it assigns.
+
+    TEACHING NOTE — the claim view puts `owner__isnull=True, stage=Stage.LEAD`
+    in the UPDATE's WHERE clause so a stale page cannot take a lead somebody
+    already has. Assign loaded the deal and saved over it, which is the
+    read-then-save shape the claim docstring warns about: an Admin working from
+    a stale queue silently took a lead off the Rep who had just picked it up,
+    and left that Rep holding the to-do for a deal that was no longer theirs.
+    """
+
+    def setUp(self):
+        cache.clear()
+        self.admin = make_user("boss", "Admin")
+        self.rep = make_user("rep1", "Rep")
+        self.other = make_user("rep2", "Rep")
+        self.company = make_company(name="Lakeside Dental")
+        self.client.force_login(self.admin)
+
+    def test_a_lead_somebody_already_picked_up_is_not_reassigned(self):
+        deal = make_deal(self.company, owner=self.rep, name="Lakeside Dental - new office", stage=Stage.LEAD)
+
+        self.client.post(reverse("lead_assign", args=[deal.pk]), {"owner": self.other.pk})
+
+        deal.refresh_from_db()
+        self.assertEqual(deal.owner, self.rep, msg="a stale queue page must not take a lead off its owner")
+        self.assertEqual(Task.objects.count(), 0, msg="nothing was assigned, so nobody gets a to-do")
+
+    def test_a_deal_past_the_lead_stage_is_not_assigned(self):
+        deal = make_deal(self.company, owner=None, name="Lakeside Dental - new office", stage=Stage.WON)
+
+        self.client.post(reverse("lead_assign", args=[deal.pk]), {"owner": self.rep.pk})
+
+        deal.refresh_from_db()
+        self.assertIsNone(deal.owner, msg="only a Lead-stage deal is a lead to hand out")
+        self.assertEqual(Task.objects.count(), 0, msg='a won deal does not need a "Contact new lead" task')
+
+    def test_assigning_twice_raises_one_task(self):
+        deal = make_deal(self.company, owner=None, name="Lakeside Dental - new office", stage=Stage.LEAD)
+
+        for _ in range(2):
+            self.client.post(reverse("lead_assign", args=[deal.pk]), {"owner": self.rep.pk})
+
+        deal.refresh_from_db()
+        self.assertEqual(deal.owner, self.rep)
+        self.assertEqual(Task.objects.filter(deal=deal).count(), 1, msg="a double-click is one assignment")
+
+    def test_a_deal_that_does_not_exist_is_a_404(self):
+        response = self.client.post(reverse("lead_assign", args=[999999]), {"owner": self.rep.pk})
+
+        self.assertEqual(response.status_code, 404)
