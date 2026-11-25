@@ -35,7 +35,10 @@ class CsvSource(SourceAdapter):
         if self._columns is None:
             with open(self.path, newline="", encoding=self.encoding) as f:
                 reader = csv.DictReader(f)
-                self._columns = reader.fieldnames or []
+                # Stripped the same way read_rows strips row keys. A header of
+                # " domain" otherwise maps as " domain" and never matches the
+                # row's "domain", so the whole column imports blank.
+                self._columns = [name.strip() for name in reader.fieldnames or []]
         return self._columns
 
     def read_rows(self):
@@ -49,6 +52,17 @@ class CsvSource(SourceAdapter):
         with open(self.path, newline="", encoding=self.encoding) as f:
             reader = csv.DictReader(f)
             for row_num, row in enumerate(reader, start=1):
+                # DictReader files cells beyond the last header under the key
+                # None — usually an unquoted comma ("Acme, Inc"), which shifts
+                # every value after it into the wrong column. Guessing which cell
+                # went where would import wrong data, so the row is reported and
+                # the engine skips it. Blank extras ("a,b,") shift nothing and
+                # are dropped quietly.
+                surplus = [cell for cell in row.pop(None, []) if cell.strip()]
                 # Strip whitespace from keys and values — CSVs are messy
                 cleaned = {k.strip(): (v.strip() if isinstance(v, str) else v) for k, v in row.items()}
-                yield ImportRow(row_number=row_num, data=cleaned)
+                errors = []
+                if surplus:
+                    errors.append(f"This row has {len(surplus)} more cells than there are columns. "
+                                  "A value with a comma in it probably needs quotes.")
+                yield ImportRow(row_number=row_num, data=cleaned, errors=errors)
