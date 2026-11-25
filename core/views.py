@@ -1462,6 +1462,10 @@ class MergeView(TemplateView):
         with transaction.atomic():
             moved = self.move_children(loser, survivor)
             survivor.tags.add(*loser.tags.all())
+            # Buying roles are a contact-only M2M; without this the loser's
+            # "Champion" went with it on delete. Companies have no roles.
+            if hasattr(loser, "roles"):
+                survivor.roles.add(*loser.roles.all())
             if loser.notes.strip():
                 survivor.notes = f"{survivor.notes}\n\n[Merged from {loser_label}]\n{loser.notes}".strip()
             carried = {f: getattr(loser, f) for f in self.fill_fields if getattr(loser, f) and not getattr(survivor, f)}
