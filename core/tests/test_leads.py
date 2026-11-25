@@ -1522,6 +1522,26 @@ class LeadRateWindowTests(TestCase):
             msg=f"after two POSTs the counter expires in {remaining}; the limit is per HOUR",
         )
 
+    def test_a_counter_left_by_the_old_limiter_does_not_break_the_form(self):
+        """
+        TEACHING NOTE — the cache outlives the deploy. The limiter used to keep
+        an integer under this key and now keeps a list of times, so an address
+        that posted shortly before the new code went live still has an integer
+        waiting for it. Changing what a cache key HOLDS is a migration nobody
+        runs, and the reader has to cope with what the old writer left behind.
+        """
+        ip = "203.0.113.21"
+        cache.set(f"lead-submit:{ip}", 3, 3600)
+
+        response = self.client.post(
+            reverse("lead_submit"),
+            public_payload(company_name="Harbor Optical"),
+            REMOTE_ADDR=ip,
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIsInstance(cache.get(f"lead-submit:{ip}"), list)
+
 
 # ------------------------------------------- assigning what is not assignable
 

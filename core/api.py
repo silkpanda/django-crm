@@ -59,9 +59,10 @@ KNOWN GAP — no rate limiting here. Deliberate, and worth saying out loud: a
 read endpoint with no throttle is free for anyone holding a session cookie to
 hammer, and a page size of 50 is a small enough unit that walking the whole
 table is a handful of requests. The in-repo pattern to copy when this needs
-closing is `views_leads.LEAD_RATE_LIMIT` — `cache.add` then `cache.incr` keyed
+closing is `views_leads._rate_limited` — a short list of request times keyed
 on the client address, against the database-backed cache so every worker counts
-into the same place.
+into the same place. Not `cache.add` then `cache.incr`: on this backend `incr`
+resets the key's expiry, which `_rate_limited` explains.
 
 KNOWN GAP — a URL under /api/ that matches NO route still answers with the
 app's `404.html`, because that page is chosen by a project-wide handler rather
